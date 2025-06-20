@@ -8,7 +8,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "test-db": "node test-db.js"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
@@ -16,6 +17,7 @@
   "dependencies": {
     "@civic/auth": "^0.8.0",
     "@google/genai": "^1.5.1",
+    "cloudinary": "^2.7.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",

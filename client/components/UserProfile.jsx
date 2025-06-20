@@ -25,12 +25,16 @@ import {
   Wallet
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import api from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
+import DatabaseDebug from './DatabaseDebug';
 
 const UserProfile = () => {
   const { user, updateUser } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
+  const { toast } = useToast();
+  const [isEditing, setIsEditing] = useState(false);const [editData, setEditData] = useState({
     name: user?.name || '',
+    username: user?.username || '',
     bio: user?.bio || '',
     location: user?.location || ''
   });
@@ -46,21 +50,31 @@ const UserProfile = () => {
       console.error('Date formatting error:', error);
       return 'Recently';
     }
-  };
-
-  const handleSave = async () => {
+  };  const handleSave = async () => {
     try {
-      // In a real app, you'd call an API to update the user
-      updateUser(editData);
-      setIsEditing(false);
+      console.log('Updating profile with data:', editData);
+      
+      const response = await api.put('/auth/profile', editData);
+      
+      console.log('Profile update response:', response.data);
+      
+      if (response.data.user) {
+        updateUser(response.data.user);
+        toast.success('Profile updated successfully!');
+        setIsEditing(false);
+      } else {
+        throw new Error('No user data received from server');
+      }
     } catch (error) {
       console.error('Failed to update profile:', error);
+      const errorMessage = error.response?.data?.error || 'Failed to update profile. Please try again.';
+      toast.error(errorMessage);
     }
   };
-
   const handleCancel = () => {
     setEditData({
       name: user?.name || '',
+      username: user?.username || '',
       bio: user?.bio || '',
       location: user?.location || ''
     });
@@ -97,14 +111,23 @@ const UserProfile = () => {
             {/* User Info */}
             <div className="flex-1 space-y-4">
               {isEditing ? (
-                <div className="space-y-4">
-                  <div>
+                <div className="space-y-4">                  <div>
                     <Label htmlFor="name">Name</Label>
                     <Input
                       id="name"
                       value={editData.name}
                       onChange={(e) => setEditData(prev => ({ ...prev, name: e.target.value }))}
                       className="bg-white/50 dark:bg-gray-800/50"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="username">Username</Label>
+                    <Input
+                      id="username"
+                      value={editData.username}
+                      onChange={(e) => setEditData(prev => ({ ...prev, username: e.target.value.toLowerCase() }))}
+                      className="bg-white/50 dark:bg-gray-800/50"
+                      placeholder="Enter a unique username"
                     />
                   </div>
                   <div>
@@ -136,13 +159,17 @@ const UserProfile = () => {
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <div>                      <h2 className="text-2xl font-bold flex items-center gap-2">
                         {user?.name}
                         {user?.isVerified && (
                           <Shield className="w-5 h-5 text-blue-500" />
                         )}
                       </h2>
+                      {user?.username && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                          @{user.username}
+                        </p>
+                      )}
                       <p className="text-gray-600 dark:text-gray-300 mt-1">
                         {user?.bio || 'No bio available'}
                       </p>
@@ -323,10 +350,12 @@ const UserProfile = () => {
               <Button variant="outline" size="sm" disabled>
                 {user?.walletAddress ? 'Connected' : 'Connect'}
               </Button>
-            </div>
-          </div>
+            </div>          </div>
         </CardContent>
       </Card>
+
+      {/* Database Debug Info (Development) */}
+      {process.env.NODE_ENV === 'development' && <DatabaseDebug />}
     </div>
   );
 };

@@ -7,13 +7,14 @@ import HomeNavbar from '@/components/HomeNavbar';
 import ComplaintsFeed from '@/components/ComplaintsFeed';
 import CreateComplaintModal from '@/components/CreateComplaintModal';
 import ModernComplaintModal from '@/components/ModernComplaintModal';
+import ProfileSetupModal from '@/components/ProfileSetupModal';
 import UserProfile from '@/components/UserProfile';
 import { Button } from '@/components/ui/button';
 import { Plus, Home as HomeIcon, User, Bell, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Home = () => {
-  const { user } = useAuth();
+  const { user, needsProfileSetup, completeProfileSetup } = useAuth();
   const [activeTab, setActiveTab] = useState('feed');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -120,9 +121,7 @@ const Home = () => {
             console.log('New complaint submitted:', complaint);
             // Refresh the feed or update state as needed
           }}
-        />
-
-        {/* Floating Action Button for Mobile */}
+        />        {/* Floating Action Button for Mobile */}
         <div className="fixed bottom-6 right-6 md:hidden">
           <Button
             onClick={() => setIsCreateModalOpen(true)}
@@ -132,6 +131,12 @@ const Home = () => {
             <Plus className="w-6 h-6" />
           </Button>
         </div>
+
+        {/* Profile Setup Modal */}
+        <ProfileSetupModal
+          isOpen={needsProfileSetup}
+          onComplete={completeProfileSetup}
+        />
       </div>
     </ProtectedRoute>
   );
