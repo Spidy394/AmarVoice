@@ -1,4 +1,4 @@
-import User from '../model/user.modle.js';
+import User from '../model/user.model.js';
 
 // Login with Civic Auth
 export const civicLogin = async (req, res) => {
