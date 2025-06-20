@@ -39,11 +39,7 @@ router.get('/', async (req, res) => {
 
 // Create new complaint (protected)
 router.post('/', authMiddleware, async (req, res) => {
-  try {    console.log('=== COMPLAINT SUBMISSION DEBUG ===');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('User ID:', req.userId);
-    console.log('User info:', req.user);
-    
+  try {
     const {
       title,
       description,
@@ -55,46 +51,7 @@ router.post('/', authMiddleware, async (req, res) => {
       isAnonymous
     } = req.body;
 
-    // Validate required fields
-    if (!title || !title.trim()) {
-      console.log('Validation error: Title is required');
-      return res.status(400).json({ error: 'Title is required' });
-    }
-
-    if (!description || !description.trim()) {
-      console.log('Validation error: Description is required');
-      return res.status(400).json({ error: 'Description is required' });
-    }
-
-    if (!category || !category.trim()) {
-      console.log('Validation error: Category is required');
-      return res.status(400).json({ error: 'Category is required' });
-    }
-
-    if (!location || !location.address || !location.address.trim()) {
-      console.log('Validation error: Location address is required');
-      return res.status(400).json({ error: 'Location address is required' });
-    }
-
-    // Validate category is one of the allowed values
-    const allowedCategories = [
-      'infrastructure',
-      'public-safety',
-      'environment',
-      'transportation',
-      'health',
-      'education',
-      'utilities',
-      'governance',
-      'other'
-    ];
-    
-    if (!allowedCategories.includes(category)) {
-      console.log('Validation error: Invalid category:', category);
-      return res.status(400).json({ error: 'Invalid category' });
-    }
-
-    console.log('All validations passed, creating complaint...');const complaint = new Complaint({
+    const complaint = new Complaint({
       title,
       description,
       category,
@@ -108,11 +65,7 @@ router.post('/', authMiddleware, async (req, res) => {
       createdAt: new Date()
     });
 
-    console.log('Complaint object to save:', JSON.stringify(complaint, null, 2));
-
     await complaint.save();
-    console.log('Complaint saved successfully:', complaint._id);
-    
     await complaint.populate('author', 'name avatar isVerified reputation');
 
     // Update user's complaint count
@@ -120,7 +73,6 @@ router.post('/', authMiddleware, async (req, res) => {
       $inc: { complaintsSubmitted: 1 }
     });
 
-    console.log('Response being sent:', JSON.stringify(complaint, null, 2));
     res.status(201).json(complaint);
   } catch (error) {
     console.error('Create complaint error:', error);

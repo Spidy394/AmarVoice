@@ -6,11 +6,11 @@ import api from './api';
 
 const useAuthStore = create(
   persist(
-    (set, get) => ({      user: null,
+    (set, get) => ({
+      user: null,
       isAuthenticated: false,
       isLoading: false,
       error: null,
-      needsProfileSetup: false,
 
       // Login action
       login: async () => {
@@ -63,30 +63,21 @@ const useAuthStore = create(
             error: null 
           });
         }
-      },      // Check authentication status
+      },
+
+      // Check authentication status
       checkAuth: async () => {
         try {
           set({ isLoading: true, error: null });
           
-          console.log('Checking authentication status...');
-          
           const response = await api.get('/auth/check');
           const { isAuthenticated, user } = response.data;
-          
-          console.log('Auth check result:', { isAuthenticated, hasUser: !!user });
-          
-          const needsSetup = isAuthenticated && user && (!user.username || !user.name);
           
           set({ 
             isAuthenticated,
             user: user || null,
-            needsProfileSetup: needsSetup,
             isLoading: false 
           });
-          
-          if (isAuthenticated && user) {
-            console.log('User authenticated:', { id: user._id, name: user.name, username: user.username });
-          }
           
           return isAuthenticated;
         } catch (error) {
@@ -94,7 +85,6 @@ const useAuthStore = create(
           set({ 
             isAuthenticated: false,
             user: null,
-            needsProfileSetup: false,
             isLoading: false,
             error: null
           });
@@ -108,11 +98,11 @@ const useAuthStore = create(
           const response = await api.get('/auth/user');
           const user = response.data;
           
-          set({ user, isAuthenticated: true, needsProfileSetup: user && (!user.username || !user.name) });
+          set({ user, isAuthenticated: true });
           return user;
         } catch (error) {
           console.error('Get user error:', error);
-          set({ user: null, isAuthenticated: false, needsProfileSetup: false });
+          set({ user: null, isAuthenticated: false });
           throw error;
         }
       },
@@ -122,37 +112,14 @@ const useAuthStore = create(
 
       // Update user
       updateUser: (userData) => {
-        const updatedUser = { ...get().user, ...userData };
-        set({ 
-          user: updatedUser,
-          needsProfileSetup: updatedUser && (!updatedUser.username || !updatedUser.name)
-        });
-      },      // Complete profile setup
-      completeProfileSetup: (userData) => {
-        console.log('Completing profile setup with user data:', userData);
-        set({ 
-          user: userData,
-          needsProfileSetup: false
-        });
-      },
-
-      // Debug function to check database stats
-      checkDatabaseStats: async () => {
-        try {
-          const response = await api.get('/auth/db-stats');
-          console.log('Database stats:', response.data);
-          return response.data;
-        } catch (error) {
-          console.error('Failed to get database stats:', error);
-          return null;
-        }
+        set({ user: { ...get().user, ...userData } });
       }
     }),
     {
-      name: 'auth-storage',      partialize: (state) => ({
+      name: 'auth-storage',
+      partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
-        needsProfileSetup: state.needsProfileSetup
+        isAuthenticated: state.isAuthenticated
       })
     }
   )

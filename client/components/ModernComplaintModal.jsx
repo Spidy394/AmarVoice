@@ -34,12 +34,11 @@ import {
   Camera,
   Sparkles,
   CheckCircle,
-  X,
-  Shield
+  X
 } from 'lucide-react';
 
 const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -108,30 +107,8 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
   };
 
   const handleSubmit = async () => {
-    // Check authentication first
-    if (!user) {
-      alert('Please log in first to submit a complaint.');
-      return;
-    }
-
     if (!textContent.trim() && !audioRecording) {
       alert('Please provide either text or voice input');
-      return;
-    }
-
-    // Validate required fields
-    if (!formData.title || !formData.title.trim()) {
-      alert('Please provide a title for your complaint');
-      return;
-    }
-
-    if (!formData.category) {
-      alert('Please select a category for your complaint');
-      return;
-    }
-
-    if (!formData.location?.address || !formData.location.address.trim()) {
-      alert('Please provide a location for your complaint');
       return;
     }
 
@@ -150,31 +127,15 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
         } : null
       };
 
-      console.log('=== CLIENT COMPLAINT SUBMISSION DEBUG ===');
-      console.log('User authenticated:', !!user);
-      console.log('User info:', { id: user?._id, name: user?.name });
-      console.log('Complaint data being sent:', JSON.stringify(complaintData, null, 2));
-
       const response = await api.post('/complaints', complaintData);
       
-      console.log('Response received:', response);
-      console.log('Response data:', response.data);
-      
       if (response.data) {
-        alert('Complaint submitted successfully!');
         onSubmit?.(response.data);
         handleClose();
       }
     } catch (error) {
       console.error('Error submitting complaint:', error);
-      
-      if (error.response?.status === 401) {
-        alert('Authentication failed. Please log in again and try submitting your complaint.');
-      } else if (error.response?.status === 400) {
-        alert(`Validation error: ${error.response?.data?.error || 'Please check your input and try again.'}`);
-      } else {
-        alert('Failed to submit complaint. Please try again.');
-      }
+      alert('Failed to submit complaint. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -390,39 +351,6 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
         return null;
     }
   };
-
-  // Show login prompt if not authenticated
-  if (isOpen && !isAuthenticated) {
-    return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[500px] bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-white/20 shadow-2xl">
-          <DialogHeader className="text-center">
-            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Authentication Required
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-300 mt-2">
-              Please log in to submit a complaint and make your voice heard.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex flex-col items-center space-y-4 py-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-blue-100 dark:from-green-900/30 dark:to-blue-900/30 rounded-full flex items-center justify-center">
-              <Shield className="w-8 h-8 text-green-600" />
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-              Your complaint submission requires secure authentication through Civic.
-            </p>
-            <Button 
-              onClick={onClose}
-              className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-            >
-              Go to Login
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>

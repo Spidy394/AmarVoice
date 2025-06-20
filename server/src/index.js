@@ -11,8 +11,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
-
 // Civic Auth Configuration
 const civicConfig = {
   clientId: process.env.CIVIC_CLIENT_ID,

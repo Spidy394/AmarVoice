@@ -1,6 +1,5 @@
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import ToastProvider from "@/components/ui/toast";
 
 export const metadata = {
   title: "AmarVoice - Empowering Citizens with Transparent Civic Engagement",
@@ -60,7 +59,8 @@ export default function RootLayout({ children }) {
                 }
               })();
             `,
-          }}        />
+          }}
+        />
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider
@@ -70,9 +70,7 @@ export default function RootLayout({ children }) {
           disableTransitionOnChange={true}
           storageKey="theme"
         >
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

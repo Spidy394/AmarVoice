@@ -7,15 +7,13 @@ import HomeNavbar from '@/components/HomeNavbar';
 import ComplaintsFeed from '@/components/ComplaintsFeed';
 import CreateComplaintModal from '@/components/CreateComplaintModal';
 import ModernComplaintModal from '@/components/ModernComplaintModal';
-import ProfileSetupModal from '@/components/ProfileSetupModal';
 import UserProfile from '@/components/UserProfile';
-import AuthDebugger from '@/components/AuthDebugger';
 import { Button } from '@/components/ui/button';
 import { Plus, Home as HomeIcon, User, Bell, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Home = () => {
-  const { user, needsProfileSetup, completeProfileSetup } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('feed');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -62,8 +60,9 @@ const Home = () => {
             </div>
           </div>
 
-          {/* Main Content with Tabs */}          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-5 mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-white/20">
+          {/* Main Content with Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4 mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-white/20">
               <TabsTrigger value="feed" className="flex items-center gap-2">
                 <HomeIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Community Feed</span>
@@ -83,10 +82,6 @@ const Home = () => {
                 <User className="w-4 h-4" />
                 <span className="hidden sm:inline">Profile</span>
                 <span className="sm:hidden">Profile</span>
-              </TabsTrigger>
-              <TabsTrigger value="debug" className="flex items-center gap-2">
-                <span className="hidden sm:inline">Debug</span>
-                <span className="sm:hidden">Debug</span>
               </TabsTrigger>
             </TabsList>
 
@@ -109,12 +104,10 @@ const Home = () => {
                 </p>
                 <p className="text-sm text-gray-400">Coming soon...</p>
               </div>
-            </TabsContent>            <TabsContent value="profile" className="mt-0">
-              <UserProfile />
             </TabsContent>
 
-            <TabsContent value="debug" className="mt-0">
-              <AuthDebugger />
+            <TabsContent value="profile" className="mt-0">
+              <UserProfile />
             </TabsContent>
           </Tabs>
         </div>
@@ -127,7 +120,9 @@ const Home = () => {
             console.log('New complaint submitted:', complaint);
             // Refresh the feed or update state as needed
           }}
-        />        {/* Floating Action Button for Mobile */}
+        />
+
+        {/* Floating Action Button for Mobile */}
         <div className="fixed bottom-6 right-6 md:hidden">
           <Button
             onClick={() => setIsCreateModalOpen(true)}
@@ -137,12 +132,6 @@ const Home = () => {
             <Plus className="w-6 h-6" />
           </Button>
         </div>
-
-        {/* Profile Setup Modal */}
-        <ProfileSetupModal
-          isOpen={needsProfileSetup}
-          onComplete={completeProfileSetup}
-        />
       </div>
     </ProtectedRoute>
   );
