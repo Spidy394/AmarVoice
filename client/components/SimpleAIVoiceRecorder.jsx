@@ -531,11 +531,9 @@ const SimpleAIVoiceRecorder = ({
                   </>
                 )}
               </Button>
-            </div>
-
-            {/* Enhanced Text */}
+            </div>            {/* Enhanced Text */}
             {enhancedText && (
-              <div className="bg-green-50 border border-green-200 p-3 rounded-md text-sm">
+              <div className="bg-green-50 border border-green-200 p-3 rounded-md text-sm text-black">
                 {enhancedText}
               </div>
             )}
