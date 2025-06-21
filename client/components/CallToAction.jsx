@@ -3,11 +3,25 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/lib/auth-store";
+import LoginModal from "./LoginModal";
 
 const CallToAction = () => {
   const [backgroundElements, setBackgroundElements] = useState([]);
   const [mounted, setMounted] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
+
+  // Handle submit complaint with authentication
+  const handleSubmitComplaint = useCallback(() => {
+    if (isAuthenticated) {
+      // Redirect to home if already authenticated
+      window.location.href = '/home';
+    } else {
+      setIsLoginModalOpen(true);
+    }
+  }, [isAuthenticated]);
 
   // Generate random positions only on client side
   useEffect(() => {
@@ -75,15 +89,21 @@ const CallToAction = () => {
           >            <Button
               size="lg"
               className="btn-modern btn-primary btn-glow min-h-[48px] touch-manipulation px-6 sm:px-8"
+              onClick={handleSubmitComplaint}
             >
               <span className="relative z-10 flex items-center text-sm sm:text-base">
                 Submit Your Complaint
                 <ArrowRight className="ml-2 sm:ml-3 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform duration-300" />
               </span>
             </Button>
-          </motion.div>
-        </motion.div>
+          </motion.div>        </motion.div>
       </div>
+      
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+      />
     </section>
   );
 };

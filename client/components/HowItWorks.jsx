@@ -131,39 +131,9 @@ const HowItWorks = () => {
               Works
             </span>
           </h2>
-          
-          <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed mb-8">
+            <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-4xl mx-auto leading-relaxed">
             <span className="font-semibold text-purple-600 dark:text-purple-400">AmarVoice</span> transforms civic engagement with a streamlined process that makes submitting and tracking complaints effortless for all Bengali-speaking citizens.
           </p>
-
-          {/* Process Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
-            {[
-              { number: "4", label: "Simple Steps", icon: CheckCircle },
-              { number: "2min", label: "Average Time", icon: Clock },
-              { number: "24/7", label: "Support", icon: Users },
-              { number: "95%", label: "Success Rate", icon: TrendingUp }
-            ].map((stat, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className="text-center"
-              >
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 mb-3">
-                  <stat.icon className="w-6 h-6 text-white" />
-                </div>
-                <div className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
-                  {stat.number}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  {stat.label}
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </motion.div>        {/* Enhanced Steps Section */}
         <div className="grid lg:grid-cols-2 gap-12 mb-16">
           {/* Active Step Display - Left Side */}

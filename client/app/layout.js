@@ -7,6 +7,11 @@ export const metadata = {
   title: "AmarVoice - Empowering Citizens with Transparent Civic Engagement",
   description: "Submit your civic complaints via text or voice in Bengali or English. AI-powered categorization, real-time tracking, and transparent resolution.",
   keywords: "civic engagement, complaints, Bengali, English, AI, voice recognition",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export const viewport = {
@@ -23,6 +28,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning className="dark">
       <head>
+        <link rel="icon" href="/logo.png" type="image/png" />
+        <link rel="shortcut icon" href="/logo.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
         <link 
           href="https://fonts.maateen.me/bensen-handwriting/font.css" 
           rel="stylesheet"
@@ -61,7 +69,8 @@ export default function RootLayout({ children }) {
                 }
               })();
             `,
-          }}        />
+          }}
+        />
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider
@@ -69,7 +78,8 @@ export default function RootLayout({ children }) {
           defaultTheme="dark"
           enableSystem={true}
           disableTransitionOnChange={true}
-          storageKey="theme"        >
+          storageKey="theme"
+        >
           <ToastProvider>
             {children}
           </ToastProvider>

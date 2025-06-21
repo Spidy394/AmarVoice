@@ -79,14 +79,16 @@ const Navbar = () => {
           isScrolled 
             ? "h-12 sm:h-14 bg-white/30 dark:bg-gray-900/30 backdrop-blur-xl border-2 border-gray-200/30 dark:border-gray-700/30 shadow-xl shadow-black/5 dark:shadow-black/30 px-4 sm:px-5 lg:px-7" 
             : "h-14 sm:h-16 bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border-2 border-gray-200/50 dark:border-gray-700/50 shadow-2xl shadow-black/10 dark:shadow-black/50 px-4 sm:px-6 lg:px-8"
-        }`}>          {/* Logo */}          <div className="flex items-center gap-2 sm:gap-2.5">
-            <div className={`relative bg-gradient-to-br from-green-500 to-blue-500 rounded-xl p-1.5 sm:p-2 transition-all duration-300 ${
+        }`}>          {/* Logo */}          <div className="flex items-center gap-2 sm:gap-2.5">            <div className={`relative transition-all duration-300 ${
               isScrolled ? "w-8 h-8 sm:w-9 sm:h-9" : "w-10 h-10 sm:w-11 sm:h-11"
             }`}>
-              <Command className={`transition-all duration-300 text-white ${
-                isScrolled ? "w-4 h-4 sm:w-5 sm:h-5" : "w-6 h-6 sm:w-7 sm:h-7"
-              }`} />
-              <div className="absolute inset-0 bg-white/20 rounded-xl opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
+              <img 
+                src="/logo.png" 
+                alt="AmarVoice Logo" 
+                className={`transition-all duration-300 object-contain rounded-lg ${
+                  isScrolled ? "w-8 h-8 sm:w-9 sm:h-9" : "w-10 h-10 sm:w-11 sm:h-11"
+                }`}
+              />
             </div>
             <span className={`font-bold bg-gradient-to-r from-green-600 to-blue-600 dark:from-green-400 dark:to-blue-400 bg-clip-text text-transparent transition-all duration-300 ${
               isScrolled ? "text-lg sm:text-xl" : "text-xl sm:text-2xl"

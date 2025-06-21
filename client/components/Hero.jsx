@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useMounted, useTimer } from "@/lib/optimization-hooks";
+import { useAuth } from "@/lib/auth-store";
+import LoginModal from "./LoginModal";
 
 // Memoized Particle component to prevent unnecessary re-renders
 const Particle = memo(({ particle }) => (
@@ -57,8 +59,9 @@ const HeroSection = () => {
       animationDuration: 1.2
     }));
   }, []);
-
   const [isComplaintModalOpen, setIsComplaintModalOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const { isAuthenticated } = useAuth();
   const mounted = useMounted();
   const { time: recordingTime, start: startRecording } = useTimer(0, 1000);
     // Start recording simulation when component mounts
@@ -73,11 +76,15 @@ const HeroSection = () => {
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
-
   // Memoized callback to prevent re-renders
   const handleSubmitComplaint = useCallback(() => {
-    setIsComplaintModalOpen(true);
-  }, []);
+    if (isAuthenticated) {
+      // Redirect to home if already authenticated
+      window.location.href = '/home';
+    } else {
+      setIsLoginModalOpen(true);
+    }
+  }, [isAuthenticated]);
 
   return (
     <>      <motion.section
@@ -110,7 +117,7 @@ const HeroSection = () => {
               <Command className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 text-green-600 dark:text-green-400" />              <span className="text-xs sm:text-xs font-medium text-gray-700 dark:text-gray-300">
                 <span style={{ fontFamily: 'BenSen Handwriting, cursive' }} className="text-green-700 dark:text-green-400 font-bold">আপনার কণ্ঠস্বর, আপনার অধিকার</span> 
                 <span className="mx-1 text-green-600 dark:text-green-400">•</span> 
-                <span className="gradient-text">Your Voice, Your Right</span>
+                <span className="gradient-text">Raise It. Share It. Amplify It.</span>
               </span>
             </div>
           </motion.div>          {/* Main Headline */}
@@ -313,10 +320,15 @@ const HeroSection = () => {
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </div>
+            </motion.div>          </div>
         </motion.div>
       </motion.section>
+      
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+      />
     </>
   );
 };
