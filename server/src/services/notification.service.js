@@ -102,19 +102,16 @@ class NotificationService {
     } catch (error) {
       console.error('Error creating status change notification:', error);
     }
-  }
-
-  // Get notifications for a user
+  }  // Get notifications for a user
   static async getUserNotifications(userId, page = 1, limit = 20) {
     try {
       const skip = (page - 1) * limit;
       
       const notifications = await Notification.find({ recipient: userId })
-        .populate('data.actorId', 'name avatar')
-        .populate('data.complaintId', 'title')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(limit);
+        .limit(limit)
+        .lean();
 
       const total = await Notification.countDocuments({ recipient: userId });
       const unreadCount = await Notification.countDocuments({ recipient: userId, read: false });

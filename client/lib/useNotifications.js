@@ -1,14 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '@/lib/api';
+import { useAuth } from '@/lib/auth-store';
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Fetch notifications
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();  // Fetch notifications
   const fetchNotifications = useCallback(async (page = 1, limit = 20) => {
+    if (!isAuthenticated || authLoading || !user) {
+      return { notifications: [], unreadCount: 0 };
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -26,14 +30,15 @@ export const useNotifications = () => {
     } catch (err) {
       setError(err.message);
       console.error('Failed to fetch notifications:', err);
-      throw err;
-    } finally {
+      throw err;    } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  // Fetch unread count only
+  }, [isAuthenticated, authLoading, user]);  // Fetch unread count only
   const fetchUnreadCount = useCallback(async () => {
+    if (!isAuthenticated || authLoading || !user) {
+      return 0;
+    }
+
     try {
       const response = await api.get('/notifications/unread-count');
       setUnreadCount(response.data.count);
@@ -42,10 +47,12 @@ export const useNotifications = () => {
       console.error('Failed to fetch unread count:', err);
       return 0;
     }
-  }, []);
-
-  // Mark notification as read
+  }, [isAuthenticated, authLoading, user]);  // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {
+    if (!isAuthenticated) {
+      return false;
+    }
+
     try {
       await api.patch(`/notifications/${notificationId}/read`);
       
@@ -58,15 +65,16 @@ export const useNotifications = () => {
       );
       
       setUnreadCount(prev => Math.max(0, prev - 1));
-      return true;
-    } catch (err) {
+      return true;    } catch (err) {
       console.error('Failed to mark notification as read:', err);
       throw err;
     }
-  }, []);
-
-  // Mark all notifications as read
+  }, [isAuthenticated]);  // Mark all notifications as read
   const markAllAsRead = useCallback(async () => {
+    if (!isAuthenticated) {
+      return false;
+    }
+
     try {
       await api.patch('/notifications/mark-all-read');
       
@@ -75,20 +83,22 @@ export const useNotifications = () => {
       );
       
       setUnreadCount(0);
-      return true;
-    } catch (err) {
+      return true;    } catch (err) {
       console.error('Failed to mark all notifications as read:', err);
       throw err;
     }
-  }, []);
-  // Real-time polling for new notifications
+  }, [isAuthenticated]);  // Real-time polling for new notifications - only when authenticated
   useEffect(() => {
+    if (!isAuthenticated || authLoading || !user) {
+      return;
+    }
+
     const interval = setInterval(() => {
       fetchUnreadCount();
     }, 15000); // Poll every 15 seconds for more real-time updates
 
     return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  }, [fetchUnreadCount, isAuthenticated, authLoading, user]);
 
   return {
     notifications,

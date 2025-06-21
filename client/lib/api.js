@@ -26,19 +26,20 @@ api.interceptors.response.use(
   (response) => {
     return response;
   },  (error) => {
-    console.error('API Error:', {
-      message: error.message,
-      url: error.config?.url,
-      method: error.config?.method,
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      headers: error.response?.headers
-    });
+    console.error('API Error:', error.message);
     
     // Handle common errors
     if (error.response?.status === 401) {
-      // Handle unauthorized - redirect to login
+      // Handle unauthorized - clear auth state and redirect to login
+      try {
+        const authData = localStorage.getItem('auth-storage');
+        if (authData) {
+          localStorage.removeItem('auth-storage');
+        }
+      } catch (e) {
+        console.error('Error clearing localStorage:', e);
+      }
+      
       if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
         window.location.href = '/';
       }
