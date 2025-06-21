@@ -12,11 +12,11 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import NotificationDropdown from '@/components/NotificationDropdown';
 import { 
   User, 
   Settings, 
   LogOut, 
-  Bell, 
   Moon, 
   Sun,
   Shield,
@@ -27,7 +27,6 @@ import { useTheme } from 'next-themes';
 const HomeNavbar = () => {
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
-  const [notifications] = useState(3); // Mock notifications
 
   const handleLogout = async () => {
     await logout();
@@ -36,13 +35,12 @@ const HomeNavbar = () => {
   const getUserInitials = (name) => {
     return name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
   };
-
   return (
-    <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50">
+    <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50 will-change-transform">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-shrink-0">
             <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">AV</span>
             </div>
@@ -52,46 +50,37 @@ const HomeNavbar = () => {
           </div>
 
           {/* User Menu */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 flex-shrink-0">
             {/* Theme Toggle */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="h-9 w-9 rounded-full"
+              className="h-9 w-9 rounded-full transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               {theme === 'dark' ? (
-                <Sun className="h-4 w-4" />
+                <Sun className="h-4 w-4 transition-transform duration-200" />
               ) : (
-                <Moon className="h-4 w-4" />
+                <Moon className="h-4 w-4 transition-transform duration-200" />
               )}
             </Button>
 
             {/* Notifications */}
-            <Button variant="ghost" size="sm" className="relative h-9 w-9 rounded-full">
-              <Bell className="h-4 w-4" />
-              {notifications > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                >
-                  {notifications}
-                </Badge>
-              )}
-            </Button>
-
-            {/* User Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={user?.avatar} alt={user?.name} />
-                    <AvatarFallback className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
-                      {getUserInitials(user?.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
+            <div className="relative">
+              <NotificationDropdown />
+            </div>            {/* User Dropdown */}
+            <div className="relative">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={user?.avatar} alt={user?.name} />
+                      <AvatarFallback className="bg-gradient-to-r from-green-600 to-blue-600 text-white">
+                        {getUserInitials(user?.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
               
               <DropdownMenuContent 
                 className="w-80 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border border-white/20" 
@@ -144,9 +133,9 @@ const HomeNavbar = () => {
                 >
                   <LogOut className="mr-3 h-4 w-4" />
                   <span>Sign out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+                </DropdownMenuItem>              </DropdownMenuContent>
             </DropdownMenu>
+            </div>
           </div>
         </div>
       </div>

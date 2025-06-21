@@ -9,6 +9,7 @@ import CreateComplaintModal from '@/components/CreateComplaintModal';
 import ModernComplaintModal from '@/components/ModernComplaintModal';
 import ProfileSetupModal from '@/components/ProfileSetupModal';
 import UserProfile from '@/components/UserProfile';
+import NotificationTestPanel from '@/components/NotificationTestPanel';
 import { Button } from '@/components/ui/button';
 import { Plus, Home as HomeIcon, User, Bell, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -105,10 +106,15 @@ const Home = () => {
                 </p>
                 <p className="text-sm text-gray-400">Coming soon...</p>
               </div>
-            </TabsContent>
-
-            <TabsContent value="profile" className="mt-0">
-              <UserProfile />
+            </TabsContent>            <TabsContent value="profile" className="mt-0">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <UserProfile />
+                </div>
+                <div className="lg:col-span-1">
+                  <NotificationTestPanel />
+                </div>
+              </div>
             </TabsContent>
           </Tabs>
         </div>

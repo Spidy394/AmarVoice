@@ -3,6 +3,7 @@ import { authMiddleware } from '../middleware/auth.middleware.js';
 import Complaint from '../model/complain.model.js';
 import User from '../model/user.modle.js';
 import geminiService from '../services/gemini.service.js';
+import NotificationService from '../services/notification.service.js';
 
 const router = express.Router();
 
@@ -164,9 +165,7 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
       content: content.trim(),
       createdAt: new Date(),
       updatedAt: new Date()
-    };
-
-    complaint.comments.push(comment);
+    };    complaint.comments.push(comment);
     await complaint.save();
     
     // Populate the author information for the new comment
@@ -175,8 +174,26 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
       select: 'name avatar isVerified'
     });
 
-    // Return the newly added comment with populated author
+    // Get the newly added comment
     const newComment = complaint.comments[complaint.comments.length - 1];
+
+    // Create notification for comment
+    try {
+      const actor = await User.findById(req.userId);
+      await NotificationService.createCommentNotification(
+        complaint._id,
+        complaint.title,
+        complaint.author,
+        req.userId,
+        actor.name,
+        newComment._id
+      );
+    } catch (notificationError) {
+      console.error('Failed to create comment notification:', notificationError);
+      // Don't fail the comment if notification creation fails
+    }
+
+    // Return the newly added comment with populated author
     res.json(newComment);
   } catch (error) {
     console.error('Add comment error:', error);
@@ -495,21 +512,39 @@ router.post('/:id/upvote', authMiddleware, async (req, res) => {
     // Remove existing downvote if present
     if (existingDownvoteIndex !== -1) {
       complaint.downvotes.splice(existingDownvoteIndex, 1);
-    }
-
-    // Toggle upvote
+    }    // Toggle upvote
+    let voteAction = null;
     if (existingUpvoteIndex !== -1) {
       // Remove upvote if already upvoted
       complaint.upvotes.splice(existingUpvoteIndex, 1);
+      voteAction = 'removed';
     } else {
       // Add upvote
       complaint.upvotes.push({
         user: userId,
         createdAt: new Date()
       });
+      voteAction = 'added';
     }    // Recalculate priority
     complaint.calculatePriority();
     await complaint.save();
+
+    // Create notification for upvote (only if added, not removed)
+    if (voteAction === 'added') {
+      try {
+        const actor = await User.findById(userId);
+        await NotificationService.createUpvoteNotification(
+          complaint._id,
+          complaint.title,
+          complaint.author,
+          userId,
+          actor.name
+        );
+      } catch (notificationError) {
+        console.error('Failed to create upvote notification:', notificationError);
+        // Don't fail the vote if notification creation fails
+      }
+    }
 
     // Update author's reputation
     try {
@@ -520,13 +555,11 @@ router.post('/:id/upvote', authMiddleware, async (req, res) => {
     } catch (repError) {
       console.error('Failed to update author reputation:', repError);
       // Don't fail the vote if reputation update fails
-    }
-
-    // Return updated vote counts
+    }    // Return updated vote counts
     res.json({
       upvoteCount: complaint.upvotes.length,
       downvoteCount: complaint.downvotes.length,
-      userVote: existingUpvoteIndex !== -1 ? null : 'upvote' // null if removed, 'upvote' if added
+      userVote: voteAction === 'removed' ? null : 'upvote' // null if removed, 'upvote' if added
     });
 
   } catch (error) {
@@ -559,21 +592,39 @@ router.post('/:id/downvote', authMiddleware, async (req, res) => {
     // Remove existing upvote if present
     if (existingUpvoteIndex !== -1) {
       complaint.upvotes.splice(existingUpvoteIndex, 1);
-    }
-
-    // Toggle downvote
+    }    // Toggle downvote
+    let voteAction = null;
     if (existingDownvoteIndex !== -1) {
       // Remove downvote if already downvoted
       complaint.downvotes.splice(existingDownvoteIndex, 1);
+      voteAction = 'removed';
     } else {
       // Add downvote
       complaint.downvotes.push({
         user: userId,
         createdAt: new Date()
       });
+      voteAction = 'added';
     }    // Recalculate priority
     complaint.calculatePriority();
     await complaint.save();
+
+    // Create notification for downvote (only if added, not removed)
+    if (voteAction === 'added') {
+      try {
+        const actor = await User.findById(userId);
+        await NotificationService.createDownvoteNotification(
+          complaint._id,
+          complaint.title,
+          complaint.author,
+          userId,
+          actor.name
+        );
+      } catch (notificationError) {
+        console.error('Failed to create downvote notification:', notificationError);
+        // Don't fail the vote if notification creation fails
+      }
+    }
 
     // Update author's reputation
     try {
@@ -584,13 +635,11 @@ router.post('/:id/downvote', authMiddleware, async (req, res) => {
     } catch (repError) {
       console.error('Failed to update author reputation:', repError);
       // Don't fail the vote if reputation update fails
-    }
-
-    // Return updated vote counts
+    }    // Return updated vote counts
     res.json({
       upvoteCount: complaint.upvotes.length,
       downvoteCount: complaint.downvotes.length,
-      userVote: existingDownvoteIndex !== -1 ? null : 'downvote' // null if removed, 'downvote' if added
+      userVote: voteAction === 'removed' ? null : 'downvote' // null if removed, 'downvote' if added
     });
 
   } catch (error) {

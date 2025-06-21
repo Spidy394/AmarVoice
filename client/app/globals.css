@@ -38,6 +38,42 @@ html {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Layout shift prevention */
+.prevent-layout-shift {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Dropdown animation optimization */
+.dropdown-content {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Badge stability */
+.notification-badge {
+  position: absolute;
+  transform: translate(50%, -50%);
+  will-change: contents;
+}
+
+/* Button hover optimization */
+.optimized-button {
+  transform: translateZ(0);
+  will-change: background-color, transform;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

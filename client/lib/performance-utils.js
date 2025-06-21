@@ -80,3 +80,30 @@ export const optimizeImage = (img) => {
     img.setAttribute('decoding', 'async');
   }
 };
+
+// Layout shift prevention utilities
+export const useLayoutStable = () => {
+  return {
+    containerClasses: 'will-change-transform transform-gpu',
+    buttonClasses: 'transition-transform duration-200 will-change-transform',
+    dropdownClasses: 'will-change-contents transform-gpu backface-hidden',
+    listClasses: 'will-change-scroll transform-gpu'
+  };
+};
+
+// Notification-specific performance optimizations
+export const optimizeNotificationRender = (notifications) => {
+  // Pre-calculate notification heights to prevent layout shifts
+  const baseHeight = 72; // Base notification item height in pixels
+  const expectedHeight = notifications.length * baseHeight;
+  
+  return {
+    containerStyle: {
+      minHeight: `${Math.min(expectedHeight, 384)}px`, // Max 384px (h-96)
+      contain: 'layout style paint'
+    },
+    listStyle: {
+      willChange: 'scroll-position'
+    }
+  };
+};

@@ -6,6 +6,7 @@ import { CookieStorage, CivicAuth } from '@civic/auth/server';
 import { connectDB } from './lib/db.js';
 import authRoutes from './route/auth.route.js';
 import complaintRoutes from './route/complaint.route.js';
+import notificationRoutes from './route/notification.route.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -75,6 +76,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Direct callback route (not under /api prefix for OAuth compliance)
 app.get('/auth/callback', async (req, res) => {
