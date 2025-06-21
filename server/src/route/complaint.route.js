@@ -418,9 +418,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       images
     } = req.body;
 
-    console.log('Updating complaint with data:', { title, description, category, urgency });
-
-    // Update the complaint fields
+    console.log('Updating complaint with data:', { title, description, category, urgency });    // Update the complaint fields
     if (title !== undefined) complaint.title = title;
     if (description !== undefined) complaint.description = description;
     if (category !== undefined) complaint.category = category;
@@ -428,6 +426,10 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (urgency !== undefined) complaint.urgency = urgency;
     if (tags !== undefined) complaint.tags = tags;
     if (images !== undefined) complaint.images = images;
+    
+    // Mark as edited and set edit timestamp
+    complaint.isEdited = true;
+    complaint.editedAt = new Date();
     
     // Update the updatedAt timestamp
     complaint.updatedAt = new Date();

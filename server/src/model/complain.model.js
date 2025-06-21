@@ -179,11 +179,18 @@ const complaintSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     default: null
-  },
-  resolution: {
+  },  resolution: {
     type: String,
     maxLength: 1000,
     default: ''
+  },
+  isEdited: {
+    type: Boolean,
+    default: false
+  },
+  editedAt: {
+    type: Date,
+    default: null
   },
   createdAt: {
     type: Date,

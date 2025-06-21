@@ -302,16 +302,18 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
       setEditing(false);
     }
   };
-  
-  const isUserComplaint = (complaint) => {
+    const isUserComplaint = (complaint) => {
+    const isOwner = user && complaint.author && complaint.author._id === user._id;
     console.log('Checking complaint ownership:', {
       user: user,
       userId: user?._id,
       complaintAuthor: complaint.author,
       complaintAuthorId: complaint.author?._id,
-      isOwner: user && complaint.author && complaint.author._id === user._id
+      isOwner: isOwner,
+      showUserComplaints: showUserComplaints,
+      willShowDropdown: isOwner || showUserComplaints
     });
-    return user && complaint.author && complaint.author._id === user._id;
+    return isOwner;
   };
 
   const ComplaintCard = ({ complaint }) => (
@@ -335,9 +337,13 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
                 {complaint.author?.isVerified && (
                   <Shield className="w-4 h-4 text-blue-500" />
                 )}
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              </div>              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {formatTimeAgo(complaint.createdAt)}
+                {complaint.isEdited && (
+                  <span className="ml-2 text-xs bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-full border border-orange-200 dark:border-orange-800">
+                    edited
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -346,7 +352,7 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
             <Badge className={getUrgencyColor(complaint.urgency)}>
               {complaint.urgency}
             </Badge>            {/* Show more options for user's own complaints */}
-            {isUserComplaint(complaint) && (
+            {(isUserComplaint(complaint) || showUserComplaints) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
