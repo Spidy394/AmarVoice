@@ -382,6 +382,70 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Update/Edit complaint (protected - author only)
+router.put('/:id', authMiddleware, async (req, res) => {
+  console.log('=== UPDATE COMPLAINT ENDPOINT CALLED ===');
+  console.log('Complaint ID:', req.params.id);
+  console.log('User ID from middleware:', req.userId);
+  
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+    console.log('Found complaint:', complaint ? complaint.title : 'None');
+    
+    if (!complaint) {
+      console.log('Complaint not found');
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    console.log('Complaint author:', complaint.author);
+    console.log('Current user ID:', req.userId);
+    console.log('Author match (equals):', complaint.author.equals(req.userId));
+
+    // Check if user is the author
+    if (!complaint.author.equals(req.userId)) {
+      console.log('Authorization failed - user is not the author');
+      return res.status(403).json({ error: 'Not authorized to edit this complaint' });
+    }
+
+    // Get update data from request body
+    const {
+      title,
+      description,
+      category,
+      location,
+      urgency,
+      tags,
+      images
+    } = req.body;
+
+    console.log('Updating complaint with data:', { title, description, category, urgency });
+
+    // Update the complaint fields
+    if (title !== undefined) complaint.title = title;
+    if (description !== undefined) complaint.description = description;
+    if (category !== undefined) complaint.category = category;
+    if (location !== undefined) complaint.location = location;
+    if (urgency !== undefined) complaint.urgency = urgency;
+    if (tags !== undefined) complaint.tags = tags;
+    if (images !== undefined) complaint.images = images;
+    
+    // Update the updatedAt timestamp
+    complaint.updatedAt = new Date();
+
+    console.log('Saving updated complaint...');
+    await complaint.save();
+    
+    // Populate author information for response
+    await complaint.populate('author', 'name avatar isVerified reputation');
+
+    console.log('Update operation completed successfully');
+    res.json(complaint);
+  } catch (error) {
+    console.error('Update complaint error:', error);
+    res.status(500).json({ error: 'Failed to update complaint' });
+  }
+});
+
 // Test endpoint for debugging
 router.get('/test-ai', authMiddleware, async (req, res) => {
   try {

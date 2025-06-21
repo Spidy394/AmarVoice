@@ -22,6 +22,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import AISuggestion from '@/components/AISuggestion';
 import api from '@/lib/api';
 import useAuthStore from '@/lib/auth-store';
@@ -36,9 +54,9 @@ import {
   AlertTriangle,
   CheckCircle,
   Circle,
-  MoreHorizontal,
-  Shield,
-  Trash2
+  MoreHorizontal,  Shield,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -47,9 +65,21 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [generatingAI, setGeneratingAI] = useState({});
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState({});  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState(null);  const [deleting, setDeleting] = useState(false);
+  
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [complaintToEdit, setComplaintToEdit] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    category: '',
+    urgency: '',
+    location: { address: '' }
+  });
+  
   const { user } = useAuthStore();
   // const { toast } = useToast();
 
@@ -202,11 +232,77 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
       setDeleting(false);
     }
   };
-
   const openDeleteDialog = (complaint) => {
     setComplaintToDelete(complaint);
     setDeleteDialogOpen(true);
   };
+
+  const openEditDialog = (complaint) => {
+    setComplaintToEdit(complaint);
+    setEditForm({
+      title: complaint.title,
+      description: complaint.description,
+      category: complaint.category,
+      urgency: complaint.urgency,
+      location: { address: complaint.location?.address || '' }
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleEditComplaint = async () => {
+    if (!complaintToEdit) return;
+    
+    try {
+      setEditing(true);
+      console.log('Attempting to edit complaint:', complaintToEdit._id);
+      console.log('Edit form data:', editForm);
+      
+      const response = await api.put(`/complaints/${complaintToEdit._id}`, editForm);
+      console.log('Edit response:', response.data);
+      
+      // Update the complaint in the local state
+      setComplaints(prevComplaints => 
+        prevComplaints.map(complaint => 
+          complaint._id === complaintToEdit._id 
+            ? { ...complaint, ...response.data }
+            : complaint
+        )
+      );
+      
+      console.log('Complaint edited successfully');
+      alert('Complaint updated successfully');
+      setEditDialogOpen(false);
+      setComplaintToEdit(null);
+    } catch (error) {
+      console.error('Failed to edit complaint:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });
+      
+      // More specific error messages
+      if (error.response?.status === 401) {
+        alert('You need to be logged in to edit complaints');
+      } else if (error.response?.status === 403) {
+        alert('You can only edit your own complaints');
+      } else if (error.response?.status === 404) {
+        alert('Complaint not found');
+      } else {
+        const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+        alert(`Failed to edit complaint: ${errorMessage}`);
+      }
+    } finally {
+      setEditing(false);
+    }
+  };
+  
   const isUserComplaint = (complaint) => {
     console.log('Checking complaint ownership:', {
       user: user,
@@ -249,17 +345,21 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
             {getStatusIcon(complaint.status)}
             <Badge className={getUrgencyColor(complaint.urgency)}>
               {complaint.urgency}
-            </Badge>
-            
-            {/* Show more options for user's own complaints */}
+            </Badge>            {/* Show more options for user's own complaints */}
             {isUserComplaint(complaint) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                </DropdownMenuTrigger>                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    className="text-blue-600 focus:text-blue-600"
+                    onClick={() => openEditDialog(complaint)}
+                  >
+                    <Edit3 className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
                   <DropdownMenuItem 
                     className="text-red-600 focus:text-red-600"
                     onClick={() => openDeleteDialog(complaint)}
@@ -438,9 +538,109 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
             >
               {deleting ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+          </AlertDialogFooter>        </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Complaint</DialogTitle>
+            <DialogDescription>
+              Make changes to your complaint. Click save when you're done.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={editForm.title}
+                onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                placeholder="Enter complaint title"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={editForm.description}
+                onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                placeholder="Describe your complaint in detail"
+                rows={4}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <Select 
+                value={editForm.category} 
+                onValueChange={(value) => setEditForm({...editForm, category: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="infrastructure">Infrastructure</SelectItem>
+                  <SelectItem value="public-safety">Public Safety</SelectItem>
+                  <SelectItem value="environment">Environment</SelectItem>
+                  <SelectItem value="transportation">Transportation</SelectItem>
+                  <SelectItem value="health">Health</SelectItem>
+                  <SelectItem value="education">Education</SelectItem>
+                  <SelectItem value="utilities">Utilities</SelectItem>
+                  <SelectItem value="governance">Governance</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="urgency">Urgency</Label>
+              <Select 
+                value={editForm.urgency} 
+                onValueChange={(value) => setEditForm({...editForm, urgency: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select urgency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={editForm.location.address}
+                onChange={(e) => setEditForm({
+                  ...editForm, 
+                  location: { ...editForm.location, address: e.target.value }
+                })}
+                placeholder="Enter location"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setEditDialogOpen(false)}
+              disabled={editing}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleEditComplaint}
+              disabled={editing}
+            >
+              {editing ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
