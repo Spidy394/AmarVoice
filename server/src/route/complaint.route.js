@@ -169,10 +169,8 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
       return res.status(404).json({ error: 'Complaint not found' });
-    }
-
-    // Check if user is the author
-    if (complaint.author.toString() !== req.userId) {
+    }    // Check if user is the author
+    if (!complaint.author.equals(req.userId)) {
       return res.status(403).json({ error: 'Not authorized to update this complaint' });
     }
 
@@ -338,6 +336,49 @@ router.post('/:id/ai-suggestion', async (req, res) => {
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to generate AI suggestion: ' + error.message });
+  }
+});
+
+// Delete complaint (protected - author only)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  console.log('=== DELETE COMPLAINT ENDPOINT CALLED ===');
+  console.log('Complaint ID:', req.params.id);
+  console.log('User ID from middleware:', req.userId);
+  console.log('User object from middleware:', req.user);
+  
+  try {
+    const complaint = await Complaint.findById(req.params.id);
+    console.log('Found complaint:', complaint ? complaint.title : 'None');
+    
+    if (!complaint) {
+      console.log('Complaint not found');
+      return res.status(404).json({ error: 'Complaint not found' });
+    }    console.log('Complaint author:', complaint.author);
+    console.log('Current user ID:', req.userId);
+    console.log('Author match (toString):', complaint.author.toString() === req.userId.toString());
+    console.log('Author match (equals):', complaint.author.equals(req.userId));
+
+    // Check if user is the author
+    if (!complaint.author.equals(req.userId)) {
+      console.log('Authorization failed - user is not the author');
+      return res.status(403).json({ error: 'Not authorized to delete this complaint' });
+    }
+
+    console.log('Deleting complaint...');
+    // Delete the complaint
+    await Complaint.findByIdAndDelete(req.params.id);
+    
+    console.log('Updating user complaint count...');
+    // Update user's complaint count
+    await User.findByIdAndUpdate(req.userId, {
+      $inc: { complaintsSubmitted: -1 }
+    });
+
+    console.log('Delete operation completed successfully');
+    res.json({ message: 'Complaint deleted successfully' });
+  } catch (error) {
+    console.error('Delete complaint error:', error);
+    res.status(500).json({ error: 'Failed to delete complaint' });
   }
 });
 

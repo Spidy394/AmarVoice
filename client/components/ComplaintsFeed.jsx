@@ -6,9 +6,27 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import AISuggestion from '@/components/AISuggestion';
 import api from '@/lib/api';
-import { 
+import useAuthStore from '@/lib/auth-store';
+// import { useToast } from '@/components/ui/toast';
+import {
   ArrowUp, 
   ArrowDown, 
   MessageCircle, 
@@ -19,7 +37,8 @@ import {
   CheckCircle,
   Circle,
   MoreHorizontal,
-  Shield
+  Shield,
+  Trash2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -29,6 +48,15 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [generatingAI, setGeneratingAI] = useState({});
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [complaintToDelete, setComplaintToDelete] = useState(null);  const [deleting, setDeleting] = useState(false);
+  const { user } = useAuthStore();
+  // const { toast } = useToast();
+
+  // Debug authentication state
+  React.useEffect(() => {
+    console.log('ComplaintsFeed - Auth state:', { user, isAuthenticated: !!user });
+  }, [user]);
 
   useEffect(() => {
     fetchComplaints();
@@ -123,10 +151,71 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
       });
       
       // Show user-friendly error message
-      alert(`Failed to generate AI suggestion: ${error.response?.data?.error || error.message}`);
-    } finally {
+      alert(`Failed to generate AI suggestion: ${error.response?.data?.error || error.message}`);    } finally {
       setGeneratingAI(prev => ({ ...prev, [complaintId]: false }));
     }
+  };  const handleDeleteComplaint = async () => {
+    if (!complaintToDelete) return;
+    
+    try {
+      setDeleting(true);
+      console.log('Attempting to delete complaint:', complaintToDelete._id);
+      
+      const response = await api.delete(`/complaints/${complaintToDelete._id}`);
+      console.log('Delete response:', response.data);
+        // Remove the complaint from the local state
+      setComplaints(prevComplaints => 
+        prevComplaints.filter(complaint => complaint._id !== complaintToDelete._id)
+      );
+        console.log('Complaint deleted successfully');
+      alert('Complaint deleted successfully');
+      setDeleteDialogOpen(false);
+      setComplaintToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete complaint:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers
+        }
+      });      // More specific error messages
+      if (error.response?.status === 401) {
+        console.log('Authentication error - showing error message');
+        alert('You need to be logged in to delete complaints');
+      } else if (error.response?.status === 403) {
+        console.log('Authorization error - showing error message');
+        alert('You can only delete your own complaints');
+      } else if (error.response?.status === 404) {
+        console.log('Not found error - showing error message');
+        alert('Complaint not found');
+      } else {
+        console.log('General error - showing error message');
+        const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+        alert(`Failed to delete complaint: ${errorMessage}`);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (complaint) => {
+    setComplaintToDelete(complaint);
+    setDeleteDialogOpen(true);
+  };
+  const isUserComplaint = (complaint) => {
+    console.log('Checking complaint ownership:', {
+      user: user,
+      userId: user?._id,
+      complaintAuthor: complaint.author,
+      complaintAuthorId: complaint.author?._id,
+      isOwner: user && complaint.author && complaint.author._id === user._id
+    });
+    return user && complaint.author && complaint.author._id === user._id;
   };
 
   const ComplaintCard = ({ complaint }) => (
@@ -156,12 +245,31 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
               </p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
             {getStatusIcon(complaint.status)}
             <Badge className={getUrgencyColor(complaint.urgency)}>
               {complaint.urgency}
             </Badge>
+            
+            {/* Show more options for user's own complaints */}
+            {isUserComplaint(complaint) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    className="text-red-600 focus:text-red-600"
+                    onClick={() => openDeleteDialog(complaint)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -309,9 +417,30 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
                 {loading ? 'Loading...' : 'Load More'}
               </Button>
             </div>
-          )}
-        </>
+          )}        </>
       )}
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Complaint</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{complaintToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteComplaint}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

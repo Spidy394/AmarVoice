@@ -27,6 +27,7 @@ export const authMiddleware = async (req, res, next) => {
     req.civicUser = civicUser;
     req.userId = dbUser._id;  // For backward compatibility with existing complaint routes
     req.user = dbUser;
+    
     next();
 
   } catch (error) {
