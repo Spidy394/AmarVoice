@@ -55,11 +55,41 @@ router.post('/', authMiddleware, async (req, res) => {
       isAnonymous
     } = req.body;
 
-    const complaint = new Complaint({
-      title,
-      description,
+    // Validate required fields
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    if (!description || !description.trim()) {
+      return res.status(400).json({ error: 'Description is required' });
+    }
+
+    if (!category) {
+      return res.status(400).json({ error: 'Category is required' });
+    }
+
+    if (!location || !location.address || !location.address.trim()) {
+      return res.status(400).json({ error: 'Location address is required' });
+    }    console.log('Creating complaint with data:', {
+      title: title.trim(),
+      description: description.trim(),
       category,
       location,
+      urgency: urgency || 'medium',
+      author: req.userId
+    });
+
+    const complaint = new Complaint({
+      title: title.trim(),
+      description: description.trim(),
+      category,
+      location: {
+        address: location.address.trim(),
+        coordinates: location.coordinates || null,
+        district: location.district || null,
+        city: location.city || null,
+        state: location.state || null
+      },
       urgency: urgency || 'medium',
       tags: tags || [],
       images: images || [],
@@ -70,7 +100,10 @@ router.post('/', authMiddleware, async (req, res) => {
     });
 
     await complaint.save();
-    await complaint.populate('author', 'name avatar isVerified reputation');    // Update user's complaint count
+    
+    await complaint.populate('author', 'name avatar isVerified reputation');
+
+    // Update user's complaint count
     await User.findByIdAndUpdate(req.userId, {
       $inc: { complaintsSubmitted: 1 }
     });
@@ -87,9 +120,6 @@ router.post('/', authMiddleware, async (req, res) => {
           isGenerated: true
         };
         await complaint.save();
-        console.log('AI suggestion generated successfully for complaint:', complaint._id);
-      } else {
-        console.warn('Gemini service not configured - skipping AI suggestion generation');
       }
     } catch (aiError) {
       console.error('AI suggestion generation failed:', aiError);
@@ -209,7 +239,9 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
       return res.status(404).json({ error: 'Complaint not found' });
-    }    // Check if user is the author
+    }
+
+    // Check if user is the author
     if (!complaint.author.equals(req.userId)) {
       return res.status(403).json({ error: 'Not authorized to update this complaint' });
     }
@@ -229,58 +261,90 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
+// Mark complaint as resolved with optional resolution note (protected - author only)
+router.patch('/:id/resolve', authMiddleware, async (req, res) => {
+  try {
+    const { resolution } = req.body;
+    
+    const complaint = await Complaint.findById(req.params.id);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    // Check if user is the author
+    if (!complaint.author.equals(req.userId)) {
+      return res.status(403).json({ error: 'Not authorized to resolve this complaint' });
+    }
+
+    // Check if already resolved
+    if (complaint.status === 'resolved') {
+      return res.status(400).json({ error: 'Complaint is already resolved' });
+    }
+
+    // Update complaint to resolved status
+    complaint.status = 'resolved';
+    complaint.isResolved = true;
+    complaint.resolvedAt = new Date();
+    complaint.resolvedBy = req.userId;
+    complaint.resolution = resolution || '';    // Update user's resolved complaints count
+    const user = await User.findByIdAndUpdate(req.userId, {
+      $inc: { complaintsResolved: 1 }
+    }, { new: true });    // Create notification for complaint resolution
+    await NotificationService.createStatusChangeNotification(
+      complaint._id,
+      complaint.title,
+      req.userId,
+      'resolved'
+    );
+
+    await complaint.save();
+
+    // Populate author info for response
+    await complaint.populate('author', 'name avatar isVerified reputation');
+    await complaint.populate('resolvedBy', 'name avatar');
+
+    res.json({
+      message: 'Complaint marked as resolved successfully',
+      complaint
+    });
+  } catch (error) {
+    console.error('Mark complaint as resolved error:', error);
+    res.status(500).json({ error: 'Failed to mark complaint as resolved' });
+  }
+});
+
 // Generate AI suggestion for a specific complaint (protected)
 router.post('/:id/ai-suggestion', async (req, res) => {
-  console.log('=== AI SUGGESTION ENDPOINT CALLED ===');
-  console.log('Complaint ID:', req.params.id);
-  console.log('Method:', req.method);
-  console.log('Headers:', req.headers);
-  
   try {
-    // Check authentication manually for better debugging
+    // Check authentication
     const isLoggedIn = await req.civicAuth.isLoggedIn();
-    console.log('User logged in:', isLoggedIn);
     
     if (!isLoggedIn) {
-      console.log('User not authenticated');
       return res.status(401).json({ error: 'Not authenticated' });
     }
 
     const civicUser = await req.civicAuth.getUser();
-    console.log('Civic user:', civicUser);
     
     if (!civicUser) {
-      console.log('No civic user found');
       return res.status(401).json({ error: 'No user session found' });
     }
 
     const dbUser = await User.findOne({ civicId: civicUser.id });
-    console.log('DB user found:', dbUser ? `${dbUser.name} (${dbUser._id})` : 'None');
     
     if (!dbUser) {
-      console.log('User not found in database');
       return res.status(401).json({ error: 'User not found in database' });
     }
 
     const complaint = await Complaint.findById(req.params.id);
-    console.log('Complaint found:', complaint ? complaint.title : 'None');
     
     if (!complaint) {
-      console.log('Complaint not found:', req.params.id);
       return res.status(404).json({ error: 'Complaint not found' });
     }
 
-    console.log('Complaint author:', complaint.author);
-    console.log('Current user:', dbUser._id);
-    console.log('Author match:', complaint.author.toString() === dbUser._id.toString());
-
     // Check if user is the author or has permission
     if (complaint.author.toString() !== dbUser._id.toString()) {
-      console.log('Authorization failed - not the author');
       return res.status(403).json({ error: 'Not authorized to generate AI suggestion for this complaint' });
-    }    console.log('Gemini service configured:', geminiService.isConfigured());
-    
-    console.log('Generating AI suggestion (using mock since no API key)...');
+    }
     
     // Create a more dynamic mock response based on the complaint
     const getUserLevel = (reputation) => {
@@ -336,12 +400,9 @@ router.post('/:id/ai-suggestion', async (req, res) => {
         }
       };
       return advice[category] || advice['infrastructure'];
-    };
-
-    const categoryAdvice = getCategoryAdvice(complaint.category);
+    };    const categoryAdvice = getCategoryAdvice(complaint.category);
     const userLevel = getUserLevel(dbUser.reputation || 0);
     
-    // For now, let's return a mock response to test the flow
     const mockAISuggestion = {
       content: `Based on your ${complaint.category} complaint "${complaint.title}", here's what you should do. As a ${userLevel} user, I recommend starting with the local authorities and following proper documentation procedures. The issue appears to be related to ${complaint.category} in ${complaint.location?.city || 'your area'}, which typically falls under local municipal jurisdiction.`,
       actionSteps: categoryAdvice.steps,
@@ -354,20 +415,15 @@ router.post('/:id/ai-suggestion', async (req, res) => {
       isGenerated: true
     };
     
-    console.log('Mock AI suggestion created');
-    
     // Update complaint with AI suggestion
     complaint.aiSuggestion = mockAISuggestion;
     await complaint.save();
-    
-    console.log('Complaint updated with AI suggestion');
 
     const response = {
       message: 'AI suggestion generated successfully',
       aiSuggestion: mockAISuggestion
     };
     
-    console.log('Sending response:', response);
     res.json(response);
     
   } catch (error) {
@@ -381,40 +437,25 @@ router.post('/:id/ai-suggestion', async (req, res) => {
 
 // Delete complaint (protected - author only)
 router.delete('/:id', authMiddleware, async (req, res) => {
-  console.log('=== DELETE COMPLAINT ENDPOINT CALLED ===');
-  console.log('Complaint ID:', req.params.id);
-  console.log('User ID from middleware:', req.userId);
-  console.log('User object from middleware:', req.user);
-  
   try {
     const complaint = await Complaint.findById(req.params.id);
-    console.log('Found complaint:', complaint ? complaint.title : 'None');
     
-    if (!complaint) {
-      console.log('Complaint not found');
-      return res.status(404).json({ error: 'Complaint not found' });
-    }    console.log('Complaint author:', complaint.author);
-    console.log('Current user ID:', req.userId);
-    console.log('Author match (toString):', complaint.author.toString() === req.userId.toString());
-    console.log('Author match (equals):', complaint.author.equals(req.userId));
+    if (!complaint) {      return res.status(404).json({ error: 'Complaint not found' });
+    }
 
     // Check if user is the author
     if (!complaint.author.equals(req.userId)) {
-      console.log('Authorization failed - user is not the author');
       return res.status(403).json({ error: 'Not authorized to delete this complaint' });
     }
 
-    console.log('Deleting complaint...');
     // Delete the complaint
     await Complaint.findByIdAndDelete(req.params.id);
     
-    console.log('Updating user complaint count...');
     // Update user's complaint count
     await User.findByIdAndUpdate(req.userId, {
       $inc: { complaintsSubmitted: -1 }
     });
 
-    console.log('Delete operation completed successfully');
     res.json({ message: 'Complaint deleted successfully' });
   } catch (error) {
     console.error('Delete complaint error:', error);
@@ -424,26 +465,13 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 
 // Update/Edit complaint (protected - author only)
 router.put('/:id', authMiddleware, async (req, res) => {
-  console.log('=== UPDATE COMPLAINT ENDPOINT CALLED ===');
-  console.log('Complaint ID:', req.params.id);
-  console.log('User ID from middleware:', req.userId);
-  
   try {
     const complaint = await Complaint.findById(req.params.id);
-    console.log('Found complaint:', complaint ? complaint.title : 'None');
     
     if (!complaint) {
-      console.log('Complaint not found');
       return res.status(404).json({ error: 'Complaint not found' });
-    }
-
-    console.log('Complaint author:', complaint.author);
-    console.log('Current user ID:', req.userId);
-    console.log('Author match (equals):', complaint.author.equals(req.userId));
-
-    // Check if user is the author
+    }    // Check if user is the author
     if (!complaint.author.equals(req.userId)) {
-      console.log('Authorization failed - user is not the author');
       return res.status(403).json({ error: 'Not authorized to edit this complaint' });
     }
 
@@ -458,7 +486,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
       images
     } = req.body;
 
-    console.log('Updating complaint with data:', { title, description, category, urgency });    // Update the complaint fields
+    // Update the complaint fields
     if (title !== undefined) complaint.title = title;
     if (description !== undefined) complaint.description = description;
     if (category !== undefined) complaint.category = category;
@@ -467,20 +495,17 @@ router.put('/:id', authMiddleware, async (req, res) => {
     if (tags !== undefined) complaint.tags = tags;
     if (images !== undefined) complaint.images = images;
     
-    // Mark as edited and set edit timestamp
-    complaint.isEdited = true;
+    // Mark as edited and set edit timestamp    complaint.isEdited = true;
     complaint.editedAt = new Date();
     
     // Update the updatedAt timestamp
     complaint.updatedAt = new Date();
 
-    console.log('Saving updated complaint...');
     await complaint.save();
     
     // Populate author information for response
     await complaint.populate('author', 'name avatar isVerified reputation');
 
-    console.log('Update operation completed successfully');
     res.json(complaint);
   } catch (error) {
     console.error('Update complaint error:', error);
@@ -752,28 +777,9 @@ router.put('/:id/comments/:commentId', authMiddleware, async (req, res) => {
     // Return the updated comment
     const updatedComment = complaint.comments.id(commentId);
     res.json(updatedComment);
-
   } catch (error) {
     console.error('Edit comment error:', error);
     res.status(500).json({ error: 'Failed to edit comment' });
-  }
-});
-
-// Test endpoint for debugging
-router.get('/test-ai', authMiddleware, async (req, res) => {
-  try {
-    console.log('Test AI endpoint called');
-    console.log('User ID:', req.userId);
-    console.log('Gemini configured:', geminiService.isConfigured());
-    
-    res.json({
-      message: 'Test endpoint working',
-      userId: req.userId,
-      geminiConfigured: geminiService.isConfigured(),
-      timestamp: new Date().toISOString()    });
-  } catch (error) {
-    console.error('Test endpoint error:', error);
-    res.status(500).json({ error: error.message });
   }
 });
 

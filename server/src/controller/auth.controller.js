@@ -291,26 +291,8 @@ export const checkAuth = async (req, res) => {
       }
     } else {
       res.json({ isAuthenticated: false });
-    }
-  } catch (error) {
+    }  } catch (error) {
     console.error('Check auth error:', error);
     res.json({ isAuthenticated: false });
-  }
-};
-
-// Get database stats (for debugging)
-export const getDatabaseStats = async (req, res) => {
-  try {
-    const userCount = await User.countDocuments();
-    const users = await User.find({}).select('civicId name username email createdAt').limit(10);
-    
-    res.json({
-      totalUsers: userCount,
-      recentUsers: users,
-      message: 'Database connection successful'
-    });
-  } catch (error) {
-    console.error('Database stats error:', error);
-    res.status(500).json({ error: 'Database connection failed' });
   }
 };

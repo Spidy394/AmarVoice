@@ -276,30 +276,9 @@ const UserProfile = () => {
             </div>
             <div className="text-sm text-gray-500 mt-1">
               Reputation points
-            </div>
-          </CardContent>
+            </div>          </CardContent>
         </Card>
       </div>
-
-      {/* Recent Activity */}
-      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-white/20">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Recent Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="text-center py-8">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-gray-500 dark:text-gray-400">
-                No recent activity to display
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Account Settings */}
       <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-white/20">

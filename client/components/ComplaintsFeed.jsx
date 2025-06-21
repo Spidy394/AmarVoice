@@ -56,9 +56,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Circle,
-  MoreHorizontal,  Shield,
+  MoreHorizontal,
+  Shield,
   Trash2,
-  Edit3
+  Edit3,
+  Check
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -72,8 +74,7 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  
-  // Edit state
+    // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [complaintToEdit, setComplaintToEdit] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -84,6 +85,12 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
     urgency: '',
     location: { address: '' }
   });
+
+  // Resolve state
+  const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
+  const [complaintToResolve, setComplaintToResolve] = useState(null);
+  const [resolving, setResolving] = useState(false);
+  const [resolutionNote, setResolutionNote] = useState('');
   
   const { user } = useAuthStore();
   // const { toast } = useToast();
@@ -316,14 +323,72 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
       } else if (error.response?.status === 404) {
         alert('Complaint not found');
       } else {
-        const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
-        alert(`Failed to edit complaint: ${errorMessage}`);
+        alert(`Failed to edit complaint: ${error.response?.data?.error || error.message}`);
       }
     } finally {
       setEditing(false);
     }
   };
-    const isUserComplaint = (complaint) => {
+    const openResolveDialog = (complaint) => {
+    setComplaintToResolve(complaint);
+    setResolutionNote('');
+    setResolveDialogOpen(true);
+  };
+
+  const handleResolveComplaint = async () => {
+    if (!complaintToResolve) return;
+    
+    try {
+      setResolving(true);
+      console.log('Attempting to resolve complaint:', complaintToResolve._id);
+      console.log('Resolution note:', resolutionNote);
+      
+      const response = await api.patch(`/complaints/${complaintToResolve._id}/resolve`, {
+        resolution: resolutionNote
+      });
+      console.log('Resolve response:', response.data);
+      
+      // Update the complaint in the local state
+      setComplaints(prevComplaints => 
+        prevComplaints.map(complaint => 
+          complaint._id === complaintToResolve._id 
+            ? { ...complaint, ...response.data.complaint }
+            : complaint
+        )
+      );
+      
+      console.log('Complaint marked as resolved successfully');
+      alert('Complaint marked as resolved successfully');
+      setResolveDialogOpen(false);
+      setComplaintToResolve(null);
+      setResolutionNote('');
+    } catch (error) {
+      console.error('Failed to resolve complaint:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      
+      // More specific error messages
+      if (error.response?.status === 401) {
+        alert('You need to be logged in to resolve complaints');
+      } else if (error.response?.status === 403) {
+        alert('You can only resolve your own complaints');
+      } else if (error.response?.status === 404) {
+        alert('Complaint not found');
+      } else if (error.response?.status === 400) {
+        alert(error.response?.data?.error || 'This complaint is already resolved');
+      } else {
+        alert(`Failed to resolve complaint: ${error.response?.data?.error || error.message}`);
+      }
+    } finally {
+      setResolving(false);
+    }
+  };
+
+  const isUserComplaint = (complaint) => {
     const isOwner = user && complaint.author && complaint.author._id === user._id;
     console.log('Checking complaint ownership:', {
       user: user,
@@ -367,12 +432,16 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
                 )}
               </p>
             </div>
-          </div>
-            <div className="flex items-center gap-2">
+          </div>            <div className="flex items-center gap-2">
             {getStatusIcon(complaint.status)}
             <Badge className={getUrgencyColor(complaint.urgency)}>
               {complaint.urgency}
-            </Badge>            {/* Show more options for user's own complaints */}
+            </Badge>
+            {complaint.status === 'resolved' && (
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800">
+                Resolved
+              </Badge>
+            )}{/* Show more options for user's own complaints */}
             {(isUserComplaint(complaint) || showUserComplaints) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -380,6 +449,15 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>                <DropdownMenuContent align="end">
+                  {complaint.status !== 'resolved' && (
+                    <DropdownMenuItem 
+                      className="text-green-600 focus:text-green-600"
+                      onClick={() => openResolveDialog(complaint)}
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Mark as Resolved
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem 
                     className="text-blue-600 focus:text-blue-600"
                     onClick={() => openEditDialog(complaint)}
@@ -421,9 +499,7 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
           {/* Category */}
           <Badge variant="outline" className="w-fit">
             {complaint.category?.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-          </Badge>
-
-          {/* Images */}
+          </Badge>          {/* Images */}
           {complaint.images && complaint.images.length > 0 && (
             <div className="flex gap-2 mt-3">
               {complaint.images.slice(0, 3).map((image, index) => (
@@ -441,7 +517,31 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
                     </div>
                   )}
                 </div>
-              ))}            </div>          )}
+              ))}
+            </div>
+          )}
+
+          {/* Resolution Information */}
+          {complaint.status === 'resolved' && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mt-3">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="font-medium text-green-800 dark:text-green-300">
+                  Resolved
+                </span>
+                {complaint.resolvedAt && (
+                  <span className="text-xs text-green-600 dark:text-green-400">
+                    on {new Date(complaint.resolvedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+              {complaint.resolution && (
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  {complaint.resolution}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* AI Suggestion - Only show in My Complaints section */}
           {showUserComplaints && (
@@ -676,6 +776,47 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
               disabled={editing}
             >
               {editing ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Resolve Dialog */}
+      <Dialog open={resolveDialogOpen} onOpenChange={setResolveDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Resolve Complaint</DialogTitle>
+            <DialogDescription>
+              Mark this complaint as resolved. Optionally, add a resolution note.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="resolution-note">Resolution Note</Label>
+              <Textarea
+                id="resolution-note"
+                value={resolutionNote}
+                onChange={(e) => setResolutionNote(e.target.value)}
+                placeholder="Enter resolution note (optional)"
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setResolveDialogOpen(false)}
+              disabled={resolving}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleResolveComplaint}
+              disabled={resolving}
+            >
+              {resolving ? 'Resolving...' : 'Mark as Resolved'}
             </Button>
           </DialogFooter>
         </DialogContent>

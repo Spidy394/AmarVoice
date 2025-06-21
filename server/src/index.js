@@ -51,21 +51,12 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cookieParser()); 
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || "http://localhost:3000",
+  origin: [    process.env.CLIENT_URL || "http://localhost:3000",
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
-
-// Debug middleware (can be removed in production)
-app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  }
-  next();
-});
 
 // Add Civic Auth to each request
 app.use((req, res, next) => {

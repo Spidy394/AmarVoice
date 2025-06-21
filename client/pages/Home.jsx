@@ -9,7 +9,6 @@ import CreateComplaintModal from '@/components/CreateComplaintModal';
 import ModernComplaintModal from '@/components/ModernComplaintModal';
 import ProfileSetupModal from '@/components/ProfileSetupModal';
 import UserProfile from '@/components/UserProfile';
-import NotificationTestPanel from '@/components/NotificationTestPanel';
 import { Button } from '@/components/ui/button';
 import { Plus, Home as HomeIcon, User, Bell, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -67,23 +66,23 @@ const Home = () => {
             <TabsList className="grid w-full grid-cols-4 mb-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-lg border border-white/20">
               <TabsTrigger value="feed" className="flex items-center gap-2">
                 <HomeIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Community Feed</span>
-                <span className="sm:hidden">Feed</span>
+                <span className="hidden sm:inline cursor-pointer">Community Feed</span>
+                <span className="sm:hidden cursor-pointer">Feed</span>
               </TabsTrigger>
               <TabsTrigger value="my-complaints" className="flex items-center gap-2">
                 <Bell className="w-4 h-4" />
-                <span className="hidden sm:inline">My Complaints</span>
-                <span className="sm:hidden">Mine</span>
+                <span className="hidden sm:inline cursor-pointer">My Complaints</span>
+                <span className="sm:hidden cursor-pointer">Mine</span>
               </TabsTrigger>
               <TabsTrigger value="search" className="flex items-center gap-2">
                 <Search className="w-4 h-4" />
-                <span className="hidden sm:inline">Search</span>
-                <span className="sm:hidden">Search</span>
+                <span className="hidden sm:inline cursor-pointer">Search</span>
+                <span className="sm:hidden cursor-pointer">Search</span>
               </TabsTrigger>
               <TabsTrigger value="profile" className="flex items-center gap-2">
                 <User className="w-4 h-4" />
-                <span className="hidden sm:inline">Profile</span>
-                <span className="sm:hidden">Profile</span>
+                <span className="hidden sm:inline cursor-pointer">Profile</span>
+                <span className="sm:hidden cursor-pointer">Profile</span>
               </TabsTrigger>
             </TabsList>
 
@@ -107,14 +106,7 @@ const Home = () => {
                 <p className="text-sm text-gray-400">Coming soon...</p>
               </div>
             </TabsContent>            <TabsContent value="profile" className="mt-0">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <UserProfile />
-                </div>
-                <div className="lg:col-span-1">
-                  <NotificationTestPanel />
-                </div>
-              </div>
+              <UserProfile />
             </TabsContent>
           </Tabs>
         </div>

@@ -6,8 +6,7 @@ import {
   getCurrentUser, 
   checkAuth,
   completeProfileSetup,
-  updateProfile,
-  getDatabaseStats
+  updateProfile
 } from '../controller/auth.controller.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 
@@ -18,7 +17,6 @@ router.get('/login', civicLogin);
 router.get('/callback', civicCallback);
 router.get('/logout', logout);
 router.get('/check', checkAuth);
-router.get('/db-stats', getDatabaseStats); // For debugging
 
 // Protected routes
 router.get('/user', authMiddleware, getCurrentUser);

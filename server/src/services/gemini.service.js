@@ -12,8 +12,7 @@ class GeminiService {
    */
   initialize() {
     if (this.initialized) return;
-    
-    if (!process.env.GEMINI_API_KEY) {
+      if (!process.env.GEMINI_API_KEY) {
       console.warn('GEMINI_API_KEY not found in environment variables');
       this.genAI = null;
       this.client = null;
@@ -21,7 +20,6 @@ class GeminiService {
       try {
         this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         this.client = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-        console.log('Gemini AI service initialized successfully');
       } catch (error) {
         console.error('Failed to initialize Gemini AI service:', error);
         this.genAI = null;
@@ -318,13 +316,9 @@ Provide practical next steps or advice based on the current status. Be specific 
     
     if (!this.client) {
       throw new Error('Gemini API not configured. Please set GEMINI_API_KEY environment variable.');
-    }
-
-    const startTime = Date.now();
+    }    const startTime = Date.now();
 
     try {
-      console.log(`Starting transcription for ${audioBuffer.length} bytes of audio`);
-      
       // Build the prompt for transcription
       const prompt = this.buildTranscriptionPrompt(options);
       
@@ -342,13 +336,9 @@ Provide practical next steps or advice based on the current status. Be specific 
         }
       ];
 
-      console.log('Sending request to Gemini API...');
-      
       const result = await this.client.generateContent(parts);
       const response = await result.response;
       const rawText = response.text();
-      
-      console.log('Received response from Gemini API');
       
       // Parse the transcription response
       const transcriptionResult = this.parseTranscriptionResponse(rawText, options);

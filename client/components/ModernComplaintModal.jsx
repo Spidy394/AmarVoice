@@ -21,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import VoiceRecorder from './VoiceRecorder';
-import AIVoiceRecorder from './SimpleAIVoiceRecorder';
+import SimpleAIVoiceRecorder from './SimpleAIVoiceRecorder';
 import LanguageDetector from './LanguageDetector';
 import AIProcessingPreview from './AIProcessingPreview';
 import { 
@@ -101,7 +101,6 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
   const handleLanguageChange = (language) => {
     setSelectedLanguage(language);
   };
-
   const handleAIAnalysisComplete = (analysis) => {
     setAiAnalysis(analysis);
     setIsProcessingAI(false);
@@ -110,17 +109,31 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
     if (analysis) {
       setFormData(prev => ({
         ...prev,
-        category: analysis.category.value,
-        urgency: analysis.urgency.value,
-        title: analysis.summary.text.substring(0, 100) + (analysis.summary.text.length > 100 ? '...' : ''),
-        description: textContent
+        category: analysis.category?.value || prev.category,
+        urgency: analysis.urgency?.value || prev.urgency,
+        title: analysis.summary?.text?.substring(0, 100) + (analysis.summary?.text?.length > 100 ? '...' : '') || prev.title,
+        // Don't override description since we use textContent for that
       }));
     }
   };
-
   const handleSubmit = async () => {
     if (!textContent.trim() && !audioRecording) {
       alert('Please provide either text or voice input');
+      return;
+    }
+
+    if (!formData.title.trim()) {
+      alert('Please provide a title for your complaint');
+      return;
+    }
+
+    if (!formData.category) {
+      alert('Please select a category for your complaint');
+      return;
+    }
+
+    if (!formData.location.address.trim()) {
+      alert('Please provide the location where the issue occurred');
       return;
     }
 
@@ -128,7 +141,16 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
     
     try {
       const complaintData = {
-        ...formData,        description: textContent,
+        title: formData.title.trim(),
+        description: textContent.trim(),
+        category: formData.category,
+        location: {
+          address: formData.location.address.trim(),
+          coordinates: formData.location.coordinates
+        },
+        urgency: formData.urgency || 'medium',
+        tags: formData.tags || [],
+        isAnonymous: formData.isAnonymous || false,
         language: selectedLanguage,
         aiAnalysis: aiAnalysis,
         transcriptionData: transcriptionData,
@@ -139,15 +161,26 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
         } : null
       };
 
+      console.log('Submitting complaint data:', complaintData);
       const response = await api.post('/complaints', complaintData);
       
       if (response.data) {
+        console.log('Complaint submitted successfully:', response.data);
         onSubmit?.(response.data);
         handleClose();
       }
     } catch (error) {
       console.error('Error submitting complaint:', error);
-      alert('Failed to submit complaint. Please try again.');
+      console.error('Response data:', error.response?.data);
+      
+      // Provide more specific error messages
+      if (error.response?.status === 400) {
+        alert('Invalid complaint data. Please check all required fields.');
+      } else if (error.response?.status === 401) {
+        alert('You must be logged in to submit a complaint.');
+      } else {
+        alert('Failed to submit complaint. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -175,15 +208,14 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
 
   const getProgressPercentage = () => {
     return ((currentStep + 1) / steps.length) * 100;
-  };
-  const canProceedToNext = () => {
+  };  const canProceedToNext = () => {
     switch (currentStep) {
       case 0:
         return textContent.trim().length > 10 || audioRecording || transcriptionData;
       case 1:
         return aiAnalysis && !isProcessingAI;
       case 2:
-        return formData.title && formData.description && formData.category;
+        return formData.title && textContent.trim() && formData.category && formData.location.address.trim();
       default:
         return false;
     }
@@ -239,11 +271,10 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
                   </div>
                 </div>
               </TabsContent>              <TabsContent value="voice" className="space-y-4">
-                <AIVoiceRecorder
+                <SimpleAIVoiceRecorder
                   onRecordingComplete={handleAudioRecording}
                   onTranscriptionComplete={handleTranscriptionComplete}
                   onRecordingChange={handleAudioRecording}
-                  enableRealTimeTranscription={true}
                   category={formData.category || 'complaint'}
                   promptContext="This is a civic complaint recording. Please transcribe clearly for official documentation."
                 />
@@ -312,25 +343,30 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Title *</Label>
+              <div className="space-y-2">                <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
                   value={formData.title}
                   onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                   placeholder="Brief title for your complaint"
+                  className={!formData.title.trim() ? "border-red-300 focus:border-red-500" : ""}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Category</Label>
+                {!formData.title.trim() && (
+                  <p className="text-sm text-red-600">Title is required</p>
+                )}
+              </div>              <div className="space-y-2">
+                <Label>Category *</Label>
                 <div className="flex items-center gap-2">
-                  <Badge className="capitalize">
-                    {formData.category.replace('-', ' ')}
-                  </Badge>
-                  {aiAnalysis && (
+                  {formData.category ? (
+                    <Badge className="capitalize">
+                      {formData.category.replace('-', ' ')}
+                    </Badge>
+                  ) : (
+                    <p className="text-sm text-red-600">Category is required - AI will auto-detect this</p>
+                  )}
+                  {aiAnalysis && aiAnalysis.category && (
                     <span className="text-xs text-gray-500">
-                      (AI suggested with {aiAnalysis.category.confidence}% confidence)
+                      (AI suggested with {aiAnalysis.category.confidence || 0}% confidence)
                     </span>
                   )}
                 </div>
@@ -348,10 +384,8 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
                     </span>
                   )}
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location">Location</Label>
+              </div>              <div className="space-y-2">
+                <Label htmlFor="location">Location *</Label>
                 <Input
                   id="location"
                   value={formData.location.address}
@@ -360,7 +394,11 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
                     location: { ...prev.location, address: e.target.value }
                   }))}
                   placeholder="Address or location where the issue occurred"
+                  className={!formData.location.address.trim() ? "border-red-300 focus:border-red-500" : ""}
                 />
+                {!formData.location.address.trim() && (
+                  <p className="text-sm text-red-600">Location is required</p>
+                )}
               </div>
 
               <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg space-y-2">
@@ -433,13 +471,28 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
               <Button variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              
-              {currentStep < steps.length - 1 ? (
+                {currentStep < steps.length - 1 ? (
                 <Button
                   onClick={() => setCurrentStep(currentStep + 1)}
                   disabled={!canProceedToNext()}
+                  className="flex items-center gap-2"
                 >
                   Next
+                  {!canProceedToNext() && currentStep === 0 && (
+                    <span className="text-xs opacity-70">
+                      (Add content first)
+                    </span>
+                  )}
+                  {!canProceedToNext() && currentStep === 1 && (
+                    <span className="text-xs opacity-70">
+                      (Waiting for AI analysis)
+                    </span>
+                  )}
+                  {!canProceedToNext() && currentStep === 2 && (
+                    <span className="text-xs opacity-70">
+                      (Complete required fields)
+                    </span>
+                  )}
                 </Button>
               ) : (
                 <Button

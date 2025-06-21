@@ -99,11 +99,12 @@ const SimpleAIVoiceRecorder = ({
   useEffect(() => {
     if (transcription && transcription.trim()) {
       setShowTranscription(true);
-      if (onTranscriptionComplete) {
-        onTranscriptionComplete(transcription, {
+      if (onTranscriptionComplete) {        onTranscriptionComplete({
+          transcription,
           language: detectedLanguage,
           confidence,
-          enhanced: enhancedText
+          enhanced: enhancedText,
+          success: true
         });
       }
     }
@@ -163,7 +164,11 @@ const SimpleAIVoiceRecorder = ({
         // Clear previous transcription
         clearTranscription();
         
-        onRecordingComplete?.(blob, recordingDuration);
+        onRecordingComplete?.({
+          blob,
+          duration: recordingDuration,
+          url
+        });
         
         // Stop stream
         if (streamRef.current) {

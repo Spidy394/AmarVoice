@@ -46,30 +46,8 @@ router.patch('/mark-all-read', authMiddleware, async (req, res) => {
   try {
     await NotificationService.markAllAsRead(req.userId);
     res.json({ success: true });
-  } catch (error) {
-    console.error('Mark all notifications as read error:', error);
+  } catch (error) {    console.error('Mark all notifications as read error:', error);
     res.status(500).json({ error: 'Failed to mark all notifications as read' });
-  }
-});
-
-// Test endpoint to create a notification (for development only)
-router.post('/test', authMiddleware, async (req, res) => {
-  try {
-    const notification = new (await import('../model/notification.model.js')).default({
-      recipient: req.userId,
-      type: 'upvote',
-      title: 'Test Notification',
-      message: 'This is a test notification to verify the system is working',
-      data: {
-        actorName: 'Test User'
-      }
-    });
-
-    await notification.save();
-    res.json({ success: true, notification });
-  } catch (error) {
-    console.error('Test notification error:', error);
-    res.status(500).json({ error: 'Failed to create test notification' });
   }
 });
 
