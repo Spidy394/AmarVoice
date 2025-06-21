@@ -1,6 +1,7 @@
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import ToastProvider from "@/components/ui/toast";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata = {
   title: "AmarVoice - Empowering Citizens with Transparent Civic Engagement",
@@ -68,11 +69,11 @@ export default function RootLayout({ children }) {
           defaultTheme="dark"
           enableSystem={true}
           disableTransitionOnChange={true}
-          storageKey="theme"
-        >
+          storageKey="theme"        >
           <ToastProvider>
             {children}
           </ToastProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

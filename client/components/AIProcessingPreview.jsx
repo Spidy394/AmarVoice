@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import api from '@/lib/api';
+import { toast } from 'sonner';
 import { 
   Brain, 
   Zap, 
@@ -24,33 +26,90 @@ const AIProcessingPreview = ({
   const [analysis, setAnalysis] = useState(null);
   const [processingStep, setProcessingStep] = useState('');
   const [progress, setProgress] = useState(0);
-
-  // Mock AI analysis - in real implementation, this would call your AI API
+  // AI analysis using real API
   const performAIAnalysis = async (inputText, audioData, lang) => {
     if (!inputText && !audioData) return null;
 
     const steps = [
+      'Preparing content for analysis...',
       'Analyzing text content...',
-      'Detecting language patterns...',
+      'Detecting patterns and context...',
       'Categorizing complaint...',
       'Assessing urgency level...',
-      'Generating summary...',
+      'Generating insights...',
       'Final processing...'
     ];
 
-    // Simulate processing steps
-    for (let i = 0; i < steps.length; i++) {
-      setProcessingStep(steps[i]);
-      setProgress(((i + 1) / steps.length) * 100);
-      await new Promise(resolve => setTimeout(resolve, 800));
-    }
+    try {
+      // Simulate processing steps with real API call
+      for (let i = 0; i < steps.length - 1; i++) {
+        setProcessingStep(steps[i]);
+        setProgress(((i + 1) / steps.length) * 80); // Leave 20% for API response
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
 
-    // Mock analysis based on text content
-    const analysisResult = generateMockAnalysis(inputText, lang);
-    setAnalysis(analysisResult);
-    onAnalysisComplete?.(analysisResult);
-    
-    return analysisResult;
+      setProcessingStep(steps[steps.length - 1]);
+      
+      // Call the real AI API
+      const response = await api.post('/ai/analyze-content', {
+        text: inputText,
+        audioMetadata: audioData ? { 
+          size: audioData.size, 
+          type: audioData.type 
+        } : null,
+        language: lang,
+        context: 'complaint'
+      });
+
+      setProgress(100);
+
+      if (response.data.success) {
+        const analysisResult = convertAPIResponseToExpectedFormat(response.data.analysis);
+        setAnalysis(analysisResult);
+        onAnalysisComplete?.(analysisResult);
+        return analysisResult;
+      } else {
+        throw new Error(response.data.error || 'Analysis failed');
+      }
+      
+    } catch (error) {
+      console.error('Real AI analysis failed, falling back to mock:', error);
+      toast.warning('Using offline analysis mode');
+      
+      // Fallback to mock analysis
+      const mockResult = generateMockAnalysis(inputText, lang);
+      setAnalysis(mockResult);
+      onAnalysisComplete?.(mockResult);
+      return mockResult;
+    }
+  };
+
+  // Convert API response to expected format
+  const convertAPIResponseToExpectedFormat = (apiAnalysis) => {
+    return {
+      category: {
+        value: apiAnalysis.category?.primary || 'other',
+        confidence: apiAnalysis.category?.confidence || 60,
+        alternatives: getAlternativeCategories(apiAnalysis.category?.primary || 'other')
+      },
+      urgency: {
+        value: apiAnalysis.urgency?.level || 'medium',
+        confidence: apiAnalysis.urgency?.confidence || 70,
+        reasoning: apiAnalysis.urgency?.reasoning || 'Standard priority assessment'
+      },
+      summary: {
+        text: apiAnalysis.summary || (text?.length > 100 ? `${text.substring(0, 97)}...` : text),
+        keyPoints: apiAnalysis.keyEntities?.slice(0, 3) || extractKeyPoints(text),
+        sentiment: apiAnalysis.sentiment?.tone || 'concerned'
+      },
+      language: {
+        detected: language,
+        confidence: 92
+      },
+      processingTime: '2.8s',
+      timestamp: new Date().toISOString(),
+      suggestedActions: apiAnalysis.suggestedActions || []
+    };
   };
 
   const generateMockAnalysis = (text, language) => {

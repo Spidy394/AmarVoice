@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import VoiceRecorder from './VoiceRecorder';
+import AIVoiceRecorder from './SimpleAIVoiceRecorder';
 import LanguageDetector from './LanguageDetector';
 import AIProcessingPreview from './AIProcessingPreview';
 import { 
@@ -51,9 +52,9 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
     tags: [],
     isAnonymous: false
   });
-
   const [textContent, setTextContent] = useState('');
   const [audioRecording, setAudioRecording] = useState(null);
+  const [transcriptionData, setTranscriptionData] = useState(null);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [aiAnalysis, setAiAnalysis] = useState(null);
   const [isProcessingAI, setIsProcessingAI] = useState(false);
@@ -62,18 +63,16 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
   const [activeTab, setActiveTab] = useState('text');
 
   const CHARACTER_LIMIT = 500;
-  const steps = ['Content', 'AI Analysis', 'Review & Submit'];
-
-  // Auto-trigger AI analysis when content changes
+  const steps = ['Content', 'AI Analysis', 'Review & Submit'];  // Auto-trigger AI analysis when content changes
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      if (textContent.trim().length > 10 || audioRecording) {
+      if (textContent.trim().length > 10 && !isProcessingAI) {
         setIsProcessingAI(true);
       }
     }, 1000);
 
     return () => clearTimeout(debounceTimer);
-  }, [textContent, audioRecording]);
+  }, [textContent]); // Only depend on textContent to avoid loops
 
   const handleTextChange = (e) => {
     const value = e.target.value;
@@ -81,9 +80,22 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
       setTextContent(value);
     }
   };
-
   const handleAudioRecording = (recordingData) => {
     setAudioRecording(recordingData);
+  };
+
+  const handleTranscriptionComplete = (transcriptionResult) => {
+    setTranscriptionData(transcriptionResult);
+    
+    // Auto-populate text content with transcription
+    if (transcriptionResult.transcription && !textContent.trim()) {
+      setTextContent(transcriptionResult.transcription);
+    }
+    
+    // Update detected language
+    if (transcriptionResult.language) {
+      setSelectedLanguage(transcriptionResult.language);
+    }
   };
 
   const handleLanguageChange = (language) => {
@@ -116,10 +128,10 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
     
     try {
       const complaintData = {
-        ...formData,
-        description: textContent,
+        ...formData,        description: textContent,
         language: selectedLanguage,
         aiAnalysis: aiAnalysis,
+        transcriptionData: transcriptionData,
         audioRecording: audioRecording ? {
           size: audioRecording.blob?.size,
           duration: audioRecording.duration,
@@ -150,9 +162,9 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
       location: { address: '', coordinates: null },
       tags: [],
       isAnonymous: false
-    });
-    setTextContent('');
+    });    setTextContent('');
     setAudioRecording(null);
+    setTranscriptionData(null);
     setSelectedLanguage('en');
     setAiAnalysis(null);
     setIsProcessingAI(false);
@@ -164,11 +176,10 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
   const getProgressPercentage = () => {
     return ((currentStep + 1) / steps.length) * 100;
   };
-
   const canProceedToNext = () => {
     switch (currentStep) {
       case 0:
-        return textContent.trim().length > 10 || audioRecording;
+        return textContent.trim().length > 10 || audioRecording || transcriptionData;
       case 1:
         return aiAnalysis && !isProcessingAI;
       case 2:
@@ -227,13 +238,35 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
                     </div>
                   </div>
                 </div>
-              </TabsContent>
-
-              <TabsContent value="voice" className="space-y-4">
-                <VoiceRecorder
+              </TabsContent>              <TabsContent value="voice" className="space-y-4">
+                <AIVoiceRecorder
                   onRecordingComplete={handleAudioRecording}
+                  onTranscriptionComplete={handleTranscriptionComplete}
                   onRecordingChange={handleAudioRecording}
+                  enableRealTimeTranscription={true}
+                  category={formData.category || 'complaint'}
+                  promptContext="This is a civic complaint recording. Please transcribe clearly for official documentation."
                 />
+                
+                {transcriptionData && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                        AI Transcription Complete
+                      </span>
+                      {transcriptionData.confidence && (
+                        <Badge variant="outline" className="text-xs">
+                          {transcriptionData.confidence}% confidence
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-blue-800 dark:text-blue-200">
+                      Your voice has been automatically transcribed and added to the text field. 
+                      You can edit the text above if needed.
+                    </p>
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
 
@@ -335,11 +368,16 @@ const ModernComplaintModal = ({ isOpen, onClose, onSubmit }) => {
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   {textContent.substring(0, 200)}
                   {textContent.length > 200 ? '...' : ''}
-                </p>
-                {audioRecording && (
+                </p>                {audioRecording && (
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                     <Mic className="w-4 h-4" />
                     <span>Voice recording included ({audioRecording.duration}s)</span>
+                  </div>
+                )}
+                {transcriptionData && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                    <Brain className="w-4 h-4" />
+                    <span>AI transcription: {transcriptionData.confidence}% confidence</span>
                   </div>
                 )}
               </div>
