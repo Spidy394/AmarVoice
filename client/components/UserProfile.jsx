@@ -27,7 +27,6 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import api from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
-import DatabaseDebug from './DatabaseDebug';
 
 const UserProfile = () => {
   const { user, updateUser } = useAuth();
@@ -350,12 +349,8 @@ const UserProfile = () => {
               <Button variant="outline" size="sm" disabled>
                 {user?.walletAddress ? 'Connected' : 'Connect'}
               </Button>
-            </div>          </div>
-        </CardContent>
+            </div>          </div>        </CardContent>
       </Card>
-
-      {/* Database Debug Info (Development) */}
-      {process.env.NODE_ENV === 'development' && <DatabaseDebug />}
     </div>
   );
 };

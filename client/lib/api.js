@@ -25,12 +25,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     return response;
-  },
-  (error) => {
+  },  (error) => {
     console.error('API Error:', {
       message: error.message,
       url: error.config?.url,
-      status: error.response?.status
+      method: error.config?.method,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers
     });
     
     // Handle common errors

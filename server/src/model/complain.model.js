@@ -110,9 +110,55 @@ const complaintSchema = new mongoose.Schema({
     createdAt: {
       type: Date,
       default: Date.now
-    }
-  }],
+    }  }],
   comments: [commentSchema],
+  aiSuggestion: {
+    content: {
+      type: String,
+      default: null
+    },
+    actionSteps: [{
+      type: String
+    }],
+    relevantContacts: [{
+      type: {
+        type: String
+      },
+      name: {
+        type: String
+      },
+      description: {
+        type: String
+      }
+    }],
+    expectedTimeline: {
+      type: String,
+      default: null
+    },
+    urgencyLevel: {
+      type: String,
+      enum: ['low', 'medium', 'high', 'critical'],
+      default: 'medium'
+    },
+    userLevel: {
+      type: String,
+      enum: ['beginner', 'intermediate', 'experienced', 'expert'],
+      default: 'beginner'
+    },
+    confidence: {
+      type: String,
+      enum: ['low', 'medium', 'high'],
+      default: 'medium'
+    },
+    generatedAt: {
+      type: Date,
+      default: null
+    },
+    isGenerated: {
+      type: Boolean,
+      default: false
+    }
+  },
   views: {
     type: Number,
     default: 0

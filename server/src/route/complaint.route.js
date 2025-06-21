@@ -2,6 +2,7 @@ import express from 'express';
 import { authMiddleware } from '../middleware/auth.middleware.js';
 import Complaint from '../model/complain.model.js';
 import User from '../model/user.modle.js';
+import geminiService from '../services/gemini.service.js';
 
 const router = express.Router();
 
@@ -66,12 +67,31 @@ router.post('/', authMiddleware, async (req, res) => {
     });
 
     await complaint.save();
-    await complaint.populate('author', 'name avatar isVerified reputation');
-
-    // Update user's complaint count
+    await complaint.populate('author', 'name avatar isVerified reputation');    // Update user's complaint count
     await User.findByIdAndUpdate(req.userId, {
       $inc: { complaintsSubmitted: 1 }
     });
+
+    // Generate AI suggestion after complaint is created
+    try {
+      if (geminiService.isConfigured()) {
+        const user = await User.findById(req.userId);
+        const aiSuggestion = await geminiService.generateComplaintSuggestion(complaint, user);
+        
+        // Update complaint with AI suggestion
+        complaint.aiSuggestion = {
+          ...aiSuggestion,
+          isGenerated: true
+        };
+        await complaint.save();
+        console.log('AI suggestion generated successfully for complaint:', complaint._id);
+      } else {
+        console.warn('Gemini service not configured - skipping AI suggestion generation');
+      }
+    } catch (aiError) {
+      console.error('AI suggestion generation failed:', aiError);
+      // Don't fail the complaint creation if AI suggestion fails
+    }
 
     res.status(201).json(complaint);
   } catch (error) {
@@ -163,13 +183,179 @@ router.patch('/:id/status', authMiddleware, async (req, res) => {
       await User.findByIdAndUpdate(req.userId, {
         $inc: { complaintsResolved: 1 }
       });
-    }
-
-    await complaint.save();
+    }    await complaint.save();
     res.json(complaint);
   } catch (error) {
     console.error('Update complaint status error:', error);
     res.status(500).json({ error: 'Failed to update complaint status' });
+  }
+});
+
+// Generate AI suggestion for a specific complaint (protected)
+router.post('/:id/ai-suggestion', async (req, res) => {
+  console.log('=== AI SUGGESTION ENDPOINT CALLED ===');
+  console.log('Complaint ID:', req.params.id);
+  console.log('Method:', req.method);
+  console.log('Headers:', req.headers);
+  
+  try {
+    // Check authentication manually for better debugging
+    const isLoggedIn = await req.civicAuth.isLoggedIn();
+    console.log('User logged in:', isLoggedIn);
+    
+    if (!isLoggedIn) {
+      console.log('User not authenticated');
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const civicUser = await req.civicAuth.getUser();
+    console.log('Civic user:', civicUser);
+    
+    if (!civicUser) {
+      console.log('No civic user found');
+      return res.status(401).json({ error: 'No user session found' });
+    }
+
+    const dbUser = await User.findOne({ civicId: civicUser.id });
+    console.log('DB user found:', dbUser ? `${dbUser.name} (${dbUser._id})` : 'None');
+    
+    if (!dbUser) {
+      console.log('User not found in database');
+      return res.status(401).json({ error: 'User not found in database' });
+    }
+
+    const complaint = await Complaint.findById(req.params.id);
+    console.log('Complaint found:', complaint ? complaint.title : 'None');
+    
+    if (!complaint) {
+      console.log('Complaint not found:', req.params.id);
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    console.log('Complaint author:', complaint.author);
+    console.log('Current user:', dbUser._id);
+    console.log('Author match:', complaint.author.toString() === dbUser._id.toString());
+
+    // Check if user is the author or has permission
+    if (complaint.author.toString() !== dbUser._id.toString()) {
+      console.log('Authorization failed - not the author');
+      return res.status(403).json({ error: 'Not authorized to generate AI suggestion for this complaint' });
+    }    console.log('Gemini service configured:', geminiService.isConfigured());
+    
+    console.log('Generating AI suggestion (using mock since no API key)...');
+    
+    // Create a more dynamic mock response based on the complaint
+    const getUserLevel = (reputation) => {
+      if (reputation >= 1000) return 'expert';
+      if (reputation >= 500) return 'experienced';
+      if (reputation >= 100) return 'intermediate';
+      return 'beginner';
+    };
+
+    const getCategoryAdvice = (category) => {
+      const advice = {
+        'infrastructure': {
+          steps: [
+            "Contact your local Municipal Corporation or PWD office",
+            "Submit a written complaint with photos as evidence",
+            "Reference the issue location with specific landmarks",
+            "Follow up every 7-10 days for status updates"
+          ],
+          contacts: [{
+            type: "Public Works Department (PWD)",
+            name: "Local PWD Office",
+            description: "Primary authority for road, drainage, and infrastructure issues"
+          }],
+          timeline: "2-6 weeks depending on complexity"
+        },
+        'utilities': {
+          steps: [
+            "Contact the local electricity board office",
+            "File a complaint with your consumer number",
+            "Document power cut timings and frequency",
+            "Request for compensation if applicable"
+          ],
+          contacts: [{
+            type: "State Electricity Board",
+            name: "Local Electricity Board Office",
+            description: "Report power cuts, billing issues, and electrical safety concerns"
+          }],
+          timeline: "1-3 weeks for resolution"
+        },
+        'environment': {
+          steps: [
+            "Contact the Pollution Control Board",
+            "File a complaint with environmental department",
+            "Collect evidence (photos, videos, air quality data)",
+            "Involve local NGOs if needed for support"
+          ],
+          contacts: [{
+            type: "Pollution Control Board",
+            name: "State/District Pollution Control Board",
+            description: "Authority for environmental issues and pollution control"
+          }],
+          timeline: "3-8 weeks depending on investigation required"
+        }
+      };
+      return advice[category] || advice['infrastructure'];
+    };
+
+    const categoryAdvice = getCategoryAdvice(complaint.category);
+    const userLevel = getUserLevel(dbUser.reputation || 0);
+    
+    // For now, let's return a mock response to test the flow
+    const mockAISuggestion = {
+      content: `Based on your ${complaint.category} complaint "${complaint.title}", here's what you should do. As a ${userLevel} user, I recommend starting with the local authorities and following proper documentation procedures. The issue appears to be related to ${complaint.category} in ${complaint.location?.city || 'your area'}, which typically falls under local municipal jurisdiction.`,
+      actionSteps: categoryAdvice.steps,
+      relevantContacts: categoryAdvice.contacts,
+      expectedTimeline: categoryAdvice.timeline,
+      urgencyLevel: complaint.urgency || "medium",
+      userLevel: userLevel,
+      confidence: "high",
+      generatedAt: new Date(),
+      isGenerated: true
+    };
+    
+    console.log('Mock AI suggestion created');
+    
+    // Update complaint with AI suggestion
+    complaint.aiSuggestion = mockAISuggestion;
+    await complaint.save();
+    
+    console.log('Complaint updated with AI suggestion');
+
+    const response = {
+      message: 'AI suggestion generated successfully',
+      aiSuggestion: mockAISuggestion
+    };
+    
+    console.log('Sending response:', response);
+    res.json(response);
+    
+  } catch (error) {
+    console.error('=== AI SUGGESTION ERROR ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to generate AI suggestion: ' + error.message });
+  }
+});
+
+// Test endpoint for debugging
+router.get('/test-ai', authMiddleware, async (req, res) => {
+  try {
+    console.log('Test AI endpoint called');
+    console.log('User ID:', req.userId);
+    console.log('Gemini configured:', geminiService.isConfigured());
+    
+    res.json({
+      message: 'Test endpoint working',
+      userId: req.userId,
+      geminiConfigured: geminiService.isConfigured(),
+      timestamp: new Date().toISOString()    });
+  } catch (error) {
+    console.error('Test endpoint error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -49,23 +49,21 @@ export const civicCallback = async (req, res) => {
     
     if (!user) {
       console.log('Creating new user in database...');
-      isNewUser = true;
-      user = new User({
+      isNewUser = true;      user = new User({
         civicId: civicUser.id,
         name: civicUser.name || 'Anonymous User',
         email: civicUser.email || null,
-        walletAddress: civicUser.walletAddress || null,
+        walletAddress: null, // Removed wallet functionality for now
         createdAt: new Date(),
         lastLogin: new Date()
       });
       await user.save();
       console.log('New user created:', { id: user._id, civicId: user.civicId, name: user.name });
     } else {
-      console.log('Updating existing user...');
-      // Update user information
+      console.log('Updating existing user...');      // Update user information
       user.name = civicUser.name || user.name;
       user.email = civicUser.email || user.email;
-      user.walletAddress = civicUser.walletAddress || user.walletAddress;
+      // Removed wallet address updates for now
       user.lastLogin = new Date();
       await user.save();
       console.log('Existing user updated:', { id: user._id, civicId: user.civicId, name: user.name });
@@ -178,15 +176,14 @@ export const completeProfileSetup = async (req, res) => {
       { new: true, select: '-__v' }
     );
 
-    if (!user) {
-      console.log('User not found, creating new user...');
+    if (!user) {      console.log('User not found, creating new user...');
       // Create user if somehow not exists
       const newUser = new User({
         civicId: civicUser.id,
         name: name.trim(),
         username: username.toLowerCase().trim(),
         email: civicUser.email || null,
-        walletAddress: civicUser.walletAddress || null,
+        walletAddress: null, // Removed wallet functionality for now
         createdAt: new Date(),
         lastLogin: new Date()
       });
@@ -275,14 +272,13 @@ export const checkAuth = async (req, res) => {
         if (user) {
           console.log('Auth check - User found in database:', { id: user._id, civicId: user.civicId });
           res.json({ isAuthenticated: true, user });
-        } else {
-          console.log('Auth check - User not found in database, creating...');
+        } else {          console.log('Auth check - User not found in database, creating...');
           // Create user if not exists (fallback)
           const newUser = new User({
             civicId: civicUser.id,
             name: civicUser.name || 'Anonymous User',
             email: civicUser.email || null,
-            walletAddress: civicUser.walletAddress || null,
+            walletAddress: null, // Removed wallet functionality for now
             createdAt: new Date(),
             lastLogin: new Date()
           });

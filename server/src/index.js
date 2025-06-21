@@ -6,11 +6,16 @@ import { CookieStorage, CivicAuth } from '@civic/auth/server';
 import { connectDB } from './lib/db.js';
 import authRoutes from './route/auth.route.js';
 import complaintRoutes from './route/complaint.route.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+// Get current directory and configure dotenv to load from server root
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 const app = express();
 const PORT = process.env.PORT || 5000;
-
 
 
 // Civic Auth Configuration

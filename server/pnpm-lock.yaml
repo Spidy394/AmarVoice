@@ -12,8 +12,8 @@ importers:
         specifier: ^0.8.0
         version: 0.8.0(react@19.1.0)
       '@google/genai':
-        specifier: ^1.5.1
-        version: 1.5.1
+        specifier: ^1.6.0
+        version: 1.6.0
       cloudinary:
         specifier: ^2.7.0
         version: 2.7.0
@@ -147,8 +147,8 @@ packages:
   '@emotion/weak-memoize@0.4.0':
     resolution: {integrity: sha512-snKqtPW01tN0ui7yu9rGv69aJXr/a/Ywvl11sUjNtEcRc+ng/mQriFL0wLXMef74iHa/EkftbDzU9F8iFbH+zg==}
 
-  '@google/genai@1.5.1':
-    resolution: {integrity: sha512-9SKpNo5iqvB622lN3tSCbeuiLGTcStRd+3muOrI9pZMpzfLDc/xC7dWIJd5kK+4AZuY28nsvQmCZe0fPj3JUew==}
+  '@google/genai@1.6.0':
+    resolution: {integrity: sha512-0vn8wMGesjiEsHeFsl10T8+SFqLj7q+RSE6mml66sE+jwI7U9wW2LQ3qYtwUEaI+P8ZYeEYE5IpYmNLcRQUBPQ==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       '@modelcontextprotocol/sdk': ^1.11.0
@@ -1345,7 +1345,7 @@ snapshots:
 
   '@emotion/weak-memoize@0.4.0': {}
 
-  '@google/genai@1.5.1':
+  '@google/genai@1.6.0':
     dependencies:
       google-auth-library: 9.15.1
       ws: 8.18.2

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import AISuggestion from '@/components/AISuggestion';
 import api from '@/lib/api';
 import { 
   ArrowUp, 
@@ -27,6 +28,7 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [generatingAI, setGeneratingAI] = useState({});
 
   useEffect(() => {
     fetchComplaints();
@@ -90,7 +92,40 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
       return formatDistanceToNow(dateObj, { addSuffix: true });
     } catch (error) {
       console.error('Date formatting error:', error);
-      return 'Recently';
+      return 'Recently';    }
+  };
+  const generateAISuggestion = async (complaintId) => {
+    try {
+      setGeneratingAI(prev => ({ ...prev, [complaintId]: true }));
+      
+      console.log('Generating AI suggestion for complaint:', complaintId);
+      
+      const response = await api.post(`/complaints/${complaintId}/ai-suggestion`);
+      
+      console.log('AI suggestion response:', response.data);
+      
+      // Update the complaint in the local state with the new AI suggestion
+      setComplaints(prevComplaints => 
+        prevComplaints.map(complaint => 
+          complaint._id === complaintId 
+            ? { ...complaint, aiSuggestion: response.data.aiSuggestion }
+            : complaint
+        )
+      );
+      
+    } catch (error) {
+      console.error('Failed to generate AI suggestion:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+      
+      // Show user-friendly error message
+      alert(`Failed to generate AI suggestion: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setGeneratingAI(prev => ({ ...prev, [complaintId]: false }));
     }
   };
 
@@ -171,8 +206,15 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
                     </div>
                   )}
                 </div>
-              ))}
-            </div>
+              ))}            </div>          )}
+
+          {/* AI Suggestion - Only show in My Complaints section */}
+          {showUserComplaints && (
+            <AISuggestion 
+              complaint={complaint}
+              onGenerateAI={() => generateAISuggestion(complaint._id)}
+              isGenerating={generatingAI[complaint._id] || false}
+            />
           )}
 
           <Separator />
