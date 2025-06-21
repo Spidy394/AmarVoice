@@ -11,11 +11,13 @@ router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const complaints = await Complaint.find({ status: { $ne: 'draft' } })
+    const skip = (page - 1) * limit;    const complaints = await Complaint.find({ status: { $ne: 'draft' } })
       .populate('author', 'name avatar isVerified reputation')
       .populate('assignedTo', 'name avatar')
+      .populate({
+        path: 'comments.author',
+        select: 'name avatar isVerified'
+      })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -101,10 +103,13 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // Get user's complaints (protected)
-router.get('/my-complaints', authMiddleware, async (req, res) => {
-  try {
+router.get('/my-complaints', authMiddleware, async (req, res) => {  try {
     const complaints = await Complaint.find({ author: req.userId })
       .populate('assignedTo', 'name avatar')
+      .populate({
+        path: 'comments.author',
+        select: 'name avatar isVerified'
+      })
       .sort({ createdAt: -1 });
 
     res.json(complaints);
@@ -120,11 +125,18 @@ router.get('/:id', async (req, res) => {
     const complaint = await Complaint.findById(req.params.id)
       .populate('author', 'name avatar isVerified reputation')
       .populate('assignedTo', 'name avatar')
-      .populate('comments.author', 'name avatar isVerified');
+      .populate({
+        path: 'comments.author',
+        select: 'name avatar isVerified'
+      });
 
     if (!complaint) {
       return res.status(404).json({ error: 'Complaint not found' });
     }
+
+    // Increment view count
+    complaint.views = (complaint.views || 0) + 1;
+    await complaint.save();
 
     res.json(complaint);
   } catch (error) {
@@ -138,6 +150,10 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
   try {
     const { content } = req.body;
     
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
     const complaint = await Complaint.findById(req.params.id);
     if (!complaint) {
       return res.status(404).json({ error: 'Complaint not found' });
@@ -145,16 +161,23 @@ router.post('/:id/comments', authMiddleware, async (req, res) => {
 
     const comment = {
       author: req.userId,
-      content,
-      createdAt: new Date()
+      content: content.trim(),
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     complaint.comments.push(comment);
     await complaint.save();
     
-    await complaint.populate('comments.author', 'name avatar isVerified');
+    // Populate the author information for the new comment
+    await complaint.populate({
+      path: 'comments.author',
+      select: 'name avatar isVerified'
+    });
 
-    res.json(complaint.comments[complaint.comments.length - 1]);
+    // Return the newly added comment with populated author
+    const newComment = complaint.comments[complaint.comments.length - 1];
+    res.json(newComment);
   } catch (error) {
     console.error('Add comment error:', error);
     res.status(500).json({ error: 'Failed to add comment' });
@@ -445,6 +468,245 @@ router.put('/:id', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Update complaint error:', error);
     res.status(500).json({ error: 'Failed to update complaint' });
+  }
+});
+
+// Upvote complaint (protected)
+router.post('/:id/upvote', authMiddleware, async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+    const userId = req.userId;
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    // Check if user already upvoted
+    const existingUpvoteIndex = complaint.upvotes.findIndex(
+      vote => vote.user.toString() === userId.toString()
+    );
+
+    // Check if user already downvoted
+    const existingDownvoteIndex = complaint.downvotes.findIndex(
+      vote => vote.user.toString() === userId.toString()
+    );
+
+    // Remove existing downvote if present
+    if (existingDownvoteIndex !== -1) {
+      complaint.downvotes.splice(existingDownvoteIndex, 1);
+    }
+
+    // Toggle upvote
+    if (existingUpvoteIndex !== -1) {
+      // Remove upvote if already upvoted
+      complaint.upvotes.splice(existingUpvoteIndex, 1);
+    } else {
+      // Add upvote
+      complaint.upvotes.push({
+        user: userId,
+        createdAt: new Date()
+      });
+    }    // Recalculate priority
+    complaint.calculatePriority();
+    await complaint.save();
+
+    // Update author's reputation
+    try {
+      const author = await User.findById(complaint.author);
+      if (author) {
+        await author.updateReputation();
+      }
+    } catch (repError) {
+      console.error('Failed to update author reputation:', repError);
+      // Don't fail the vote if reputation update fails
+    }
+
+    // Return updated vote counts
+    res.json({
+      upvoteCount: complaint.upvotes.length,
+      downvoteCount: complaint.downvotes.length,
+      userVote: existingUpvoteIndex !== -1 ? null : 'upvote' // null if removed, 'upvote' if added
+    });
+
+  } catch (error) {
+    console.error('Upvote error:', error);
+    res.status(500).json({ error: 'Failed to upvote complaint' });
+  }
+});
+
+// Downvote complaint (protected)
+router.post('/:id/downvote', authMiddleware, async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+    const userId = req.userId;
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    // Check if user already downvoted
+    const existingDownvoteIndex = complaint.downvotes.findIndex(
+      vote => vote.user.toString() === userId.toString()
+    );
+
+    // Check if user already upvoted
+    const existingUpvoteIndex = complaint.upvotes.findIndex(
+      vote => vote.user.toString() === userId.toString()
+    );
+
+    // Remove existing upvote if present
+    if (existingUpvoteIndex !== -1) {
+      complaint.upvotes.splice(existingUpvoteIndex, 1);
+    }
+
+    // Toggle downvote
+    if (existingDownvoteIndex !== -1) {
+      // Remove downvote if already downvoted
+      complaint.downvotes.splice(existingDownvoteIndex, 1);
+    } else {
+      // Add downvote
+      complaint.downvotes.push({
+        user: userId,
+        createdAt: new Date()
+      });
+    }    // Recalculate priority
+    complaint.calculatePriority();
+    await complaint.save();
+
+    // Update author's reputation
+    try {
+      const author = await User.findById(complaint.author);
+      if (author) {
+        await author.updateReputation();
+      }
+    } catch (repError) {
+      console.error('Failed to update author reputation:', repError);
+      // Don't fail the vote if reputation update fails
+    }
+
+    // Return updated vote counts
+    res.json({
+      upvoteCount: complaint.upvotes.length,
+      downvoteCount: complaint.downvotes.length,
+      userVote: existingDownvoteIndex !== -1 ? null : 'downvote' // null if removed, 'downvote' if added
+    });
+
+  } catch (error) {
+    console.error('Downvote error:', error);
+    res.status(500).json({ error: 'Failed to downvote complaint' });
+  }
+});
+
+// Get user's vote status for a complaint (protected)
+router.get('/:id/vote-status', authMiddleware, async (req, res) => {
+  try {
+    const complaintId = req.params.id;
+    const userId = req.userId;
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    const hasUpvoted = complaint.upvotes.some(
+      vote => vote.user.toString() === userId.toString()
+    );
+
+    const hasDownvoted = complaint.downvotes.some(
+      vote => vote.user.toString() === userId.toString()
+    );
+
+    let userVote = null;
+    if (hasUpvoted) userVote = 'upvote';
+    if (hasDownvoted) userVote = 'downvote';
+
+    res.json({
+      upvoteCount: complaint.upvotes.length,
+      downvoteCount: complaint.downvotes.length,
+      userVote
+    });
+
+  } catch (error) {
+    console.error('Vote status error:', error);
+    res.status(500).json({ error: 'Failed to get vote status' });
+  }
+});
+
+// Delete comment from complaint (protected - comment author only)
+router.delete('/:id/comments/:commentId', authMiddleware, async (req, res) => {
+  try {
+    const { id: complaintId, commentId } = req.params;
+    const userId = req.userId;
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    const comment = complaint.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    // Check if user is the comment author or complaint author
+    if (!comment.author.equals(userId) && !complaint.author.equals(userId)) {
+      return res.status(403).json({ error: 'Not authorized to delete this comment' });
+    }
+
+    // Remove the comment
+    complaint.comments.pull(commentId);
+    await complaint.save();
+
+    res.json({ message: 'Comment deleted successfully' });
+
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    res.status(500).json({ error: 'Failed to delete comment' });
+  }
+});
+
+// Edit comment (protected - comment author only)
+router.put('/:id/comments/:commentId', authMiddleware, async (req, res) => {
+  try {
+    const { id: complaintId, commentId } = req.params;
+    const { content } = req.body;
+    const userId = req.userId;
+
+    if (!content || content.trim().length === 0) {
+      return res.status(400).json({ error: 'Comment content is required' });
+    }
+
+    const complaint = await Complaint.findById(complaintId);
+    if (!complaint) {
+      return res.status(404).json({ error: 'Complaint not found' });
+    }
+
+    const comment = complaint.comments.id(commentId);
+    if (!comment) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    // Check if user is the comment author
+    if (!comment.author.equals(userId)) {
+      return res.status(403).json({ error: 'Not authorized to edit this comment' });
+    }
+
+    // Update the comment
+    comment.content = content.trim();
+    comment.updatedAt = new Date();
+
+    await complaint.save();
+    await complaint.populate('comments.author', 'name avatar isVerified');
+
+    // Return the updated comment
+    const updatedComment = complaint.comments.id(commentId);
+    res.json(updatedComment);
+
+  } catch (error) {
+    console.error('Edit comment error:', error);
+    res.status(500).json({ error: 'Failed to edit comment' });
   }
 });
 

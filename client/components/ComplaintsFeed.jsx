@@ -41,6 +41,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import AISuggestion from '@/components/AISuggestion';
+import VotingButtons from '@/components/VotingButtons';
+import CommentsSection from '@/components/CommentsSection';
 import api from '@/lib/api';
 import useAuthStore from '@/lib/auth-store';
 // import { useToast } from '@/components/ui/toast';
@@ -65,8 +67,11 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [generatingAI, setGeneratingAI] = useState({});  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [complaintToDelete, setComplaintToDelete] = useState(null);  const [deleting, setDeleting] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState({});  const [expandedComments, setExpandedComments] = useState({}); // Track expanded comments
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [complaintToDelete, setComplaintToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -246,7 +251,23 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
       urgency: complaint.urgency,
       location: { address: complaint.location?.address || '' }
     });
-    setEditDialogOpen(true);
+    setEditDialogOpen(true);  };
+
+  const handleCommentsUpdate = (complaintId, updatedComments) => {
+    setComplaints(prevComplaints =>
+      prevComplaints.map(complaint =>
+        complaint._id === complaintId
+          ? { ...complaint, comments: updatedComments }
+          : complaint
+      )
+    );
+  };
+
+  const toggleComments = (complaintId) => {
+    setExpandedComments(prev => ({
+      ...prev,
+      [complaintId]: !prev[complaintId]
+    }));
   };
 
   const handleEditComplaint = async () => {
@@ -429,26 +450,25 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
               onGenerateAI={() => generateAISuggestion(complaint._id)}
               isGenerating={generatingAI[complaint._id] || false}
             />
-          )}
-
-          <Separator />
+          )}          <Separator />
 
           {/* Actions */}
           <div className="flex items-center justify-between pt-2">
             <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-green-600">
-                <ArrowUp className="w-4 h-4 mr-1" />
-                <span>{complaint.upvoteCount || 0}</span>
-              </Button>
+              <VotingButtons
+                complaintId={complaint._id}
+                initialUpvotes={complaint.upvoteCount || 0}
+                initialDownvotes={complaint.downvoteCount || 0}
+              />
               
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-red-600">
-                <ArrowDown className="w-4 h-4 mr-1" />
-                <span>{complaint.downvoteCount || 0}</span>
-              </Button>
-              
-              <Button variant="ghost" size="sm" className="text-gray-600 hover:text-blue-600">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-gray-600 hover:text-blue-600"
+                onClick={() => toggleComments(complaint._id)}
+              >
                 <MessageCircle className="w-4 h-4 mr-1" />
-                <span>{complaint.commentCount || 0}</span>
+                <span>{complaint.commentCount || complaint.comments?.length || 0}</span>
               </Button>
             </div>
 
@@ -457,6 +477,19 @@ const ComplaintsFeed = ({ showUserComplaints = false }) => {
               <span>{complaint.views || 0} views</span>
             </div>
           </div>
+
+          {/* Comments Section */}
+          {expandedComments[complaint._id] && (
+            <div className="mt-4 pt-4 border-t">
+              <CommentsSection
+                complaintId={complaint._id}
+                comments={complaint.comments || []}
+                onCommentsUpdate={(updatedComments) => 
+                  handleCommentsUpdate(complaint._id, updatedComments)
+                }
+              />
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
