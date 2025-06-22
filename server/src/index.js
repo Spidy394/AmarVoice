@@ -50,9 +50,42 @@ app.set('query parser', 'simple');
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cookieParser()); 
+// CORS Configuration - Allow multiple origins for development and production
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:3000",
+  "https://amar-voice.vercel.app",
+  "https://amarvoice.vercel.app", // Alternative domain if needed
+  "http://localhost:3000", // For local development
+  "http://localhost:3001", // Alternative local port
+];
+
+// In development, allow all localhost origins
+if (process.env.NODE_ENV === 'development') {
+  allowedOrigins.push(/^http:\/\/localhost:\d+$/);
+}
+
 app.use(cors({
-  origin: [    process.env.CLIENT_URL || "http://localhost:3000",
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is in our allowed list
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
+      return callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      return callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
