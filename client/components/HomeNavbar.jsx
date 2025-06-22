@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '@/lib/auth-store';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -38,11 +39,17 @@ const HomeNavbar = () => {
   return (
     <nav className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-white/20 sticky top-0 z-50 will-change-transform">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+        <div className="flex items-center justify-between h-16">          {/* Logo */}
           <div className="flex items-center space-x-2 flex-shrink-0">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-600 to-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">AV</span>
+            <div className="w-8 h-8 relative">
+              <Image
+                src="/logo.png"
+                alt="AmarVoice Logo"
+                width={32}
+                height={32}
+                className="rounded-lg object-contain"
+                priority
+              />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
               AmarVoice
