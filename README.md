@@ -64,7 +64,7 @@ BugLords
 ## 📽 Demo & Deliverables
 
 - **Demo Video Link:** [Watch on YouTube](https://youtu.be/_D7zDgmdkGY)  
-- **Live Application:** [AmarVoice Platform](https://artha-flow.vercel.app/)
+- **Live Application:** [AmarVoice Platform](https://amar-voice.vercel.app/)
 
 ---
 
