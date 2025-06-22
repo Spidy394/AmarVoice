@@ -16,9 +16,12 @@ export const civicCallback = async (req, res) => {
   try {
     const { code, state } = req.query;
     
+    console.log('Callback received:', { code: !!code, state: !!state });
+    
     if (!code || !state) {
       console.error('Missing code or state parameter:', { code: !!code, state: !!state });
-      return res.redirect(`${process.env.CLIENT_URL}?error=missing_params`);
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+      return res.redirect(`${clientUrl}?error=missing_params`);
     }
 
     console.log('Processing callback with code and state');
@@ -32,7 +35,8 @@ export const civicCallback = async (req, res) => {
     const isLoggedIn = await req.civicAuth.isLoggedIn();
     if (!isLoggedIn) {
       console.error('User not logged in after OAuth resolution');
-      return res.redirect(`${process.env.CLIENT_URL}?error=login_failed`);
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+      return res.redirect(`${clientUrl}?error=login_failed`);
     }
 
     // Get user information from Civic
@@ -40,8 +44,9 @@ export const civicCallback = async (req, res) => {
     
     if (!civicUser) {
       console.error('Failed to get user information from Civic after login');
-      return res.redirect(`${process.env.CLIENT_URL}?error=user_info_failed`);
-    }    console.log('Got user from Civic:', { id: civicUser.id, name: civicUser.name });
+      const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+      return res.redirect(`${clientUrl}?error=user_info_failed`);
+    }console.log('Got user from Civic:', { id: civicUser.id, name: civicUser.name });
     
     // Find or create user in database
     let user = await User.findOne({ civicId: civicUser.id });
@@ -71,16 +76,17 @@ export const civicCallback = async (req, res) => {
 
     console.log('User saved successfully, redirecting to home');
 
-    // Redirect to home page with profile setup indicator for new users
+    // Redirect to home page with profile setup indicator for new users    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
     const redirectUrl = isNewUser && (!user.username || !user.name) 
-      ? `${process.env.CLIENT_URL}/home?setup=true`
-      : `${process.env.CLIENT_URL}/home`;
+      ? `${clientUrl}/home?setup=true`
+      : `${clientUrl}/home`;
     
     res.redirect(redirectUrl);
 
   } catch (error) {
     console.error('Civic callback error:', error);
-    res.redirect(`${process.env.CLIENT_URL}?error=auth_failed`);
+    const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+    res.redirect(`${clientUrl}?error=auth_failed`);
   }
 };
 
@@ -260,11 +266,17 @@ export const updateProfile = async (req, res) => {
 // Check auth status
 export const checkAuth = async (req, res) => {
   try {
+    console.log('=== AUTH CHECK START ===');
+    console.log('Request origin:', req.headers.origin);
+    console.log('Request cookies:', Object.keys(req.cookies));
+    
     const isLoggedIn = await req.civicAuth.isLoggedIn();
+    console.log('Civic isLoggedIn:', isLoggedIn);
     
     if (isLoggedIn) {
       // Get user from Civic Auth session
       const civicUser = await req.civicAuth.getUser();
+      console.log('Civic user:', civicUser ? { id: civicUser.id, name: civicUser.name } : null);
       
       if (civicUser) {
         // Find user in database
@@ -272,7 +284,8 @@ export const checkAuth = async (req, res) => {
         if (user) {
           console.log('Auth check - User found in database:', { id: user._id, civicId: user.civicId });
           res.json({ isAuthenticated: true, user });
-        } else {          console.log('Auth check - User not found in database, creating...');
+        } else {
+          console.log('Auth check - User not found in database, creating...');
           // Create user if not exists (fallback)
           const newUser = new User({
             civicId: civicUser.id,
@@ -287,12 +300,17 @@ export const checkAuth = async (req, res) => {
           res.json({ isAuthenticated: true, user: newUser });
         }
       } else {
+        console.log('Auth check - No civic user found');
         res.json({ isAuthenticated: false });
       }
     } else {
+      console.log('Auth check - Not logged in');
       res.json({ isAuthenticated: false });
-    }  } catch (error) {
-    console.error('Check auth error:', error);
-    res.json({ isAuthenticated: false });
+    }
+  } catch (error) {
+    console.error('=== AUTH CHECK ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    res.json({ isAuthenticated: false, error: error.message });
   }
 };
