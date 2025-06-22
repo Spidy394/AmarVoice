@@ -29,7 +29,8 @@ export const useStableRandom = (generator, dependencies = []) => {
         console.warn('Error generating stable random value:', error);
       }
     }
-  }, dependencies);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generator, ...dependencies]);
   
   return value;
 };

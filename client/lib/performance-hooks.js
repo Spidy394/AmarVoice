@@ -6,7 +6,7 @@ import { debounce } from '@/lib/performance-utils';
  * Provides common optimizations like debounced handlers and memoization
  */
 export const withPerformanceOptimization = (Component) => {
-  return memo((props) => {
+  const PerformanceOptimizedComponent = memo((props) => {
     const [isVisible, setIsVisible] = useState(false);
     
     // Intersection observer for lazy loading
@@ -31,13 +31,17 @@ export const withPerformanceOptimization = (Component) => {
     
     // Memoized props to prevent unnecessary re-renders
     const memoizedProps = useMemo(() => props, [props]);
-    
-    return (
+      return (
       <div data-component={Component.name}>
         <Component {...memoizedProps} isVisible={isVisible} />
       </div>
     );
   });
+  
+  // Set display name for debugging
+  PerformanceOptimizedComponent.displayName = `withPerformanceOptimization(${Component.displayName || Component.name || 'Component'})`;
+  
+  return PerformanceOptimizedComponent;
 };
 
 /**
@@ -76,8 +80,7 @@ export const useOptimizedResize = (callback, delay = 150) => {
  * Hook for reduced motion preference
  */
 export const useReducedMotion = () => {
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);  
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPrefersReducedMotion(mediaQuery.matches);
@@ -87,6 +90,5 @@ export const useReducedMotion = () => {
     
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
-  
-  return prefersReducedMotion;
+    return prefersReducedMotion;
 };

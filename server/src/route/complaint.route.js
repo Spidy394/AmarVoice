@@ -44,6 +44,10 @@ router.get('/', async (req, res) => {
 // Create new complaint (protected)
 router.post('/', authMiddleware, async (req, res) => {
   try {
+    console.log('=== CREATE COMPLAINT REQUEST ===');
+    console.log('User ID:', req.userId);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const {
       title,
       description,
@@ -57,20 +61,28 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Validate required fields
     if (!title || !title.trim()) {
+      console.log('Validation failed: Title is required');
       return res.status(400).json({ error: 'Title is required' });
     }
 
     if (!description || !description.trim()) {
+      console.log('Validation failed: Description is required');
       return res.status(400).json({ error: 'Description is required' });
     }
 
     if (!category) {
+      console.log('Validation failed: Category is required');
       return res.status(400).json({ error: 'Category is required' });
     }
 
     if (!location || !location.address || !location.address.trim()) {
+      console.log('Validation failed: Location address is required');
       return res.status(400).json({ error: 'Location address is required' });
-    }    console.log('Creating complaint with data:', {
+    }
+
+    console.log('All validations passed, creating complaint...');
+
+    console.log('Creating complaint with data:', {
       title: title.trim(),
       description: description.trim(),
       category,
@@ -126,10 +138,12 @@ router.post('/', authMiddleware, async (req, res) => {
       // Don't fail the complaint creation if AI suggestion fails
     }
 
-    res.status(201).json(complaint);
-  } catch (error) {
-    console.error('Create complaint error:', error);
-    res.status(500).json({ error: 'Failed to create complaint' });
+    res.status(201).json(complaint);  } catch (error) {
+    console.error('=== CREATE COMPLAINT ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    console.error('Full error:', error);
+    res.status(500).json({ error: 'Failed to create complaint', details: error.message });
   }
 });
 
