@@ -63,7 +63,7 @@ BugLords
 
 ## 📽 Demo & Deliverables
 
-- **Demo Video Link:** [Watch on YouTube]()  
+- **Demo Video Link:** [Watch on YouTube](https://youtu.be/TvXc4fwwNF4?si=tTsEoMK8iFZkMcsa)  
 - **Live Application:** [AmarVoice Platform](https://amar-voice.vercel.app/)
 
 ---
